@@ -5,12 +5,13 @@ endpoint that can fire. Proposals are drafts for the existing gated
 pipelines. Calling/SMS endpoints exist only to return the disabled state.
 """
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from . import __version__
 from .audit_site import audit_website
 from .comms import CommsDisabled, DisabledCommsProvider
 from .config import load_settings
+from .discovery import DiscoveryRecordError, ingest_results
 from .governor import SpendGovernor
 from .jobs import run_pending
 from .proposals import PACKAGES, build_proposal
@@ -38,6 +39,11 @@ class LeadIn(BaseModel):
     service: str = ""
     source_url: str = ""
     source: str = "api"
+
+
+class DiscoveryImportIn(BaseModel):
+    provider: str = Field(min_length=1, max_length=80)
+    results: list[dict] = Field(max_length=100)
 
 
 @app.get("/health")
@@ -74,9 +80,19 @@ def add_lead(lead: LeadIn):
     return {"outcome": outcome, "score": score, "reasons": reasons}
 
 
+@app.post("/api/discovery/import")
+def import_discovery_results(payload: DiscoveryImportIn):
+    """Import structured results from an approved provider adapter; no scraping."""
+    guard_mutation()
+    try:
+        return ingest_results(store, payload.results, payload.provider)
+    except DiscoveryRecordError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
 @app.get("/api/leads")
 def list_leads(limit: int = 200):
-    return store.leads(limit)
+    return store.leads(max(1, min(limit, 5000)))
 
 
 @app.post("/api/leads/{lead_id}/audit")
