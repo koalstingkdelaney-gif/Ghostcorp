@@ -1,43 +1,49 @@
-# Status — 2026-11-02 (Phase 0 + Phase 1)
+# Status — 2026-11-23
 
-## Implemented and tested
-- FastAPI service: `/health`, `/ready`, `/api/packages`, lead intake/list,
-  per-lead audit + proposal endpoints, job runner, dashboard summary,
-  comms endpoints that return the disabled state. Verified live locally
-  (uvicorn on port 8791, all endpoints exercised with curl).
-- Core: spend governor (cap $0 default, enforced, tested), SQLite store,
-  transparent lead scoring, SSRF-hardened website audit, rate-card proposal
-  drafts, disabled-by-design calling/SMS adapters, durable idempotent jobs,
-  audit log, global pause kill switch.
-- Tests: **10/10 passing** (`pytest -q`, 2026-11-02).
+## Repository work completed in this update
 
-## Hands-on with the existing company (verified, real data)
-- Imported the existing ghostcorpnet agency pipeline read-only:
-  **7,059 rows seen → 6,748 leads added, 311 duplicates skipped,
-  12 opt-out suppressions loaded** and enforced.
-- Audited the top 10 scored prospects with the safe crawler — all returned
-  HTTP 200 with recorded evidence (response time, page weight, content
-  type) and real findings, e.g. missing meta descriptions, missing H1,
-  slow/heavy homepages.
-- Drafted **10 proposals**, all priced strictly from the existing live rate
-  card (AI Front Desk $299 + $149/mo for these). Nothing was sent.
+- Added `app/discovery.py`: provider-neutral ingestion boundary for structured
+  business-search results. It makes no network requests and does not scrape
+  search-engine result pages.
+- Added guarded `POST /api/discovery/import` to the FastAPI app. It enforces
+  the global pause switch, limits batches to 100, requires provider provenance,
+  validates source URL shape, rejects local/private literal IPs and URLs with
+  embedded credentials, and delegates deduplication/opt-out suppression to
+  the existing store.
+- Added `tests/test_discovery.py` for provenance, unsafe URLs, deduplication,
+  suppression, invalid records, and batch limits.
+- Updated README to distinguish the ingestion boundary from a live provider.
 
-## Environment note (honest)
-This VM sits behind an egress proxy whose DNS translates public hostnames
-into 198.18.0.0/15. The audit crawler's SSRF guard correctly refused those
-until the operator flag `AGENCY_TRUST_PROXY_DNS_BENCH=1` was set for this
-sandbox (default OFF everywhere else; all other non-public ranges stay
-refused). First-pass audit refusals were overwritten with real audits.
+## Verification state
 
-## Not done / blocked (owner-side, see PROVIDER_SETUP.md)
-- **Cloud deployment**: no host chosen/verified yet — service is deployed
-  and proven locally only. Do not call it cloud-live.
-- **Payments**: disabled. Needs the owner's Stripe onboarding (identity,
-  payout details) in Stripe's dashboard; test-mode integration is Phase 4.
-- **Calling/SMS**: disabled. Needs provider onboarding + registrations +
-  documented consent + owner-approved scripts + the owner's enable flag.
-  Unsolicited automated marketing calls stay off permanently.
-- **GitHub Actions CI**: workflow documented in `docs/CI.md`; adding it
-  needs the repo token's `workflow` scope (owner re-authorization).
-- **Revenue**: $0. This agency has made no sales; proposals are drafts in
-  the existing company's review flow, not sent pitches.
+- GitHub accepted the commits for the new module, API integration, and tests.
+- **Tests have not been executed in this environment.** Do not report them as
+  passing until CI or a local test run confirms it.
+- The discovery endpoint is not connected to a live search/business-data
+  provider. It is ready to receive structured results from a separately
+  approved adapter; that adapter remains future work.
+
+## Existing Phase 0 + Phase 1 claims (historical, dated 2026-11-02)
+
+The prior status reported 10/10 tests passing on 2026-11-02, a read-only import
+of 6,748 leads, 12 opt-out suppressions, 10 audited prospects, and 10 proposal
+drafts. Those are historical claims from the previous status report, not
+freshly rerun or independently reverified in this update.
+
+## Still blocked / not proven
+
+- Cloud deployment: no production host or live URL verified.
+- Payments: disabled; provider onboarding and test-mode integration remain.
+- Calling/SMS: disabled; compliance and provider prerequisites remain.
+- Live discovery provider: not connected.
+- Revenue: no verified customer payment or revenue established.
+- CI: must run the test suite and security checks before treating this update
+  as verified.
+
+## Operating constraints
+
+- External paid API spend remains $0 before revenue.
+- No outbound marketing messages, calls, or texts are enabled.
+- No credentials or payment-card data belong in Git.
+- Owner approval remains required for spending, paid-provider activation,
+  payout changes, customer-facing publication, and production deployment.
