@@ -47,3 +47,18 @@ freshly rerun or independently reverified in this update.
 - No credentials or payment-card data belong in Git.
 - Owner approval remains required for spending, paid-provider activation,
   payout changes, customer-facing publication, and production deployment.
+
+
+## Security hardening in progress — owner API authentication
+
+A separate branch, `security/admin-api-auth`, now adds an owner API key gate
+for prospect data, dashboard data, imports, audits, proposal drafts, job
+execution, and communications routes. The gate fails closed when
+`AGENCY_ADMIN_TOKEN` is not configured and uses constant-time comparison.
+Public health/readiness and package pricing remain available. A focused API
+authentication test file and threat-model documentation were added.
+
+This is **committed to the working branch, not merged or deployed**. Tests have
+not been run in this environment; review and test execution are still required.
+Set the token only in the eventual host's secret manager. Do not place it in
+Git, a public webpage, or browser-side JavaScript.
