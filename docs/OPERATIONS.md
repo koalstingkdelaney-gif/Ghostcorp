@@ -21,7 +21,18 @@ Leave it unset on any normal host.
    This service never sends.
 
 ## Backups
-Copy `data/agency.db` before upgrades. Restore = put the file back.
+
+Use the encrypted backup utility; do not copy a live WAL database file by ordinary file copy.
+
+1. Install the `age` encryption utility on the authorized host.
+2. Set `AGE_RECIPIENT` to the owner's age **public** recipient (the private identity stays offline and outside Git).
+3. Run: `python scripts/backup_db.py`.
+4. The script uses SQLite's online backup API, checks integrity, encrypts with age, decrypts into a temporary directory to verify the round trip, and retains the newest three encrypted snapshots.
+5. Backups are written to `backups/`, which is gitignored. Copy encrypted snapshots to a separate authorized off-host destination when one is configured.
+
+Restore: decrypt an encrypted snapshot into a protected temporary location, verify `PRAGMA integrity_check`, stop the service, replace the database, and restart. Practice on a disposable copy first.
+
+The backup script is implemented but has not yet been run against a production database or an owner-configured encryption recipient. No off-host backup destination is currently verified.
 
 ## Rollback
 Code is in Git; check out the previous commit and restart. Data migrations
