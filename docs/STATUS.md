@@ -47,3 +47,11 @@ freshly rerun or independently reverified in this update.
 - No credentials or payment-card data belong in Git.
 - Owner approval remains required for spending, paid-provider activation,
   payout changes, customer-facing publication, and production deployment.
+
+
+## Backup and resilience work (2026-11-24)
+
+- Added `scripts/backup_db.py`: consistent SQLite snapshot via the online backup API, age encryption, decryption/hash round-trip verification, and three-generation retention.
+- Added `tests/test_backup.py` for the SQLite snapshot path.
+- Added `backups/` to `.gitignore`; runtime backup artifacts must never enter the public repository.
+- Tests have not been executed in this environment. No production database, age recipient, or off-host destination was available to verify a live backup.
