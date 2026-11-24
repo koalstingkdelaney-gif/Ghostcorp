@@ -5,3 +5,6 @@ data/
 .env
 *.db
 .pytest_cache/
+
+# Encrypted runtime backups must never enter Git
+backups/
