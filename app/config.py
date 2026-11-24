@@ -20,6 +20,7 @@ class Settings:
     payments_mode: str = os.environ.get("PAYMENTS_MODE", "disabled")  # disabled|test|live
     calling_enabled: bool = _flag("CALLING_ENABLED")
     sms_enabled: bool = _flag("SMS_ENABLED")
+    admin_token: str = os.environ.get("AGENCY_ADMIN_TOKEN", "")
     existing_leads_path: str = os.environ.get("EXISTING_LEADS_PATH", "")
     existing_optouts_path: str = os.environ.get("EXISTING_OPTOUTS_PATH", "")
 
@@ -32,6 +33,7 @@ def load_settings() -> Settings:
         payments_mode=os.environ.get("PAYMENTS_MODE", "disabled"),
         calling_enabled=_flag("CALLING_ENABLED"),
         sms_enabled=_flag("SMS_ENABLED"),
+        admin_token=os.environ.get("AGENCY_ADMIN_TOKEN", ""),
         existing_leads_path=os.environ.get("EXISTING_LEADS_PATH", ""),
         existing_optouts_path=os.environ.get("EXISTING_OPTOUTS_PATH", ""),
     )
