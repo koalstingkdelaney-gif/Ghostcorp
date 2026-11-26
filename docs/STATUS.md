@@ -79,3 +79,20 @@ freshly rerun or independently reverified in this update.
   crypto conversion, or USD payout integration has been established.
 - The public status endpoints report registry/ledger state only. All writes
   are denied unless the separate federation admin token is configured.
+
+
+## Durable agent queue foundation (2026-11-26)
+
+- Added `app/agent_runtime.py`: durable SQLite task queue with machine-token
+  authentication, division-scoped claiming, role filtering, expiring leases,
+  lease-token completion, and idempotent task keys.
+- Added admin-token-protected task enqueue plus agent claim/complete/status
+  endpoints under `/api/runtime`.
+- Added `tests/test_agent_runtime.py` for task lifecycle, division isolation,
+  and idempotent enqueue.
+- GitHub accepted the source and test commits. Tests have **not** been run in
+  this environment; runtime behavior remains unverified until a test run.
+- This is queue infrastructure, not an autonomous AI worker. No model
+  executor, scheduler, production host, or always-on process is configured.
+- Existing machine agents remain provisioned identities; they are not
+  automatically running or independently reasoning.
