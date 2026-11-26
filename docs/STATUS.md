@@ -96,3 +96,14 @@ freshly rerun or independently reverified in this update.
   executor, scheduler, production host, or always-on process is configured.
 - Existing machine agents remain provisioned identities; they are not
   automatically running or independently reasoning.
+
+
+## Public process journal and always-on fleet architecture (2026-11-26)
+
+- Added `app/build_journal.py` with an allowlisted, sanitized public milestone journal.
+- Added public read endpoint `GET /api/public/build-journal` and admin-token-protected publish endpoint `POST /api/build-journal/publish`.
+- Added `tests/test_build_journal.py` for publication, idempotency, and state validation.
+- Added `docs/ALWAYS-ON-OPERATIONS.md` documenting the coordinated ephemeral-worker model, durable shared queue, staggered schedules, leases, recovery, resource limits, and truthful public progress.
+- GitHub accepted the code and test commits. Tests have not been executed here.
+- The public journal is an API foundation; no automatic scheduled publisher, website widget, or social account integration is active.
+- No GitHub Actions workflow was deployed. The connected repository integration previously reported missing workflow permission. No 24/7 server or worker fleet is live.
