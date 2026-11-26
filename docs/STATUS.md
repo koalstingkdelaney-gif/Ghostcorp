@@ -126,3 +126,17 @@ freshly rerun or independently reverified in this update.
   or the workflow itself. The latest run result has not yet been retrieved.
 - These controls harden queue coordination; they do not create a worker,
   connect an AI model, deploy a service, or establish 24/7 uptime.
+
+
+## Local model gateway foundation (2026-11-26)
+
+- Added `app/model_gateway.py`: an Ollama-compatible local inference adapter.
+- The adapter is disabled by default, accepts only loopback HTTP endpoints,
+  has no cloud fallback or paid API path, and restricts task types and privacy
+  classes. Prompt/output sizes and request timeout are bounded.
+- Added `tests/test_model_gateway.py` for disabled defaults, endpoint
+  restrictions, privacy/task policy, bounded prompts, and mocked local calls.
+- Added `docs/LOCAL-MODEL-GATEWAY.md` and linked it from the README.
+- The code is **not connected to the agent queue**, Ollama is not installed or
+  configured on a host, and no model is running. Tests have not been confirmed
+  green. No always-on inference service is claimed.
