@@ -55,3 +55,27 @@ freshly rerun or independently reverified in this update.
 - Added `tests/test_backup.py` for the SQLite snapshot path.
 - Added `backups/` to `.gitignore`; runtime backup artifacts must never enter the public repository.
 - Tests have not been executed in this environment. No production database, age recipient, or off-host destination was available to verify a live backup.
+
+
+## Identity-minimal federation foundation (2026-11-26)
+
+- Added `app/federation.py` with SQLite division and machine-agent registries.
+- Added `GET /api/federation/status`, plus admin-token-protected division and
+  agent provisioning endpoints. The admin token must be configured as
+  `FEDERATION_ADMIN_TOKEN` in the runtime environment; it is not stored in Git.
+- Agent credentials are generated as machine tokens and only SHA-256 hashes
+  are stored. A newly provisioned token is returned once by the provisioning
+  endpoint. Provisioned agents are **not running agents**.
+- Registry schema intentionally excludes personal names, personal email,
+  birth dates, government IDs, addresses, and identity-document fields.
+- Added `app/ledger.py` with a provider-neutral append-only event journal and
+  an admin-protected simulation endpoint. It is explicitly
+  `SIMULATED_ONLY`: it does not hold wallet keys, bank details, card data,
+  convert assets, or move money.
+- Added `tests/test_federation.py` and `tests/test_ledger.py`.
+- GitHub accepted these commits, but tests have **not** been executed. Do not
+  claim the new modules are passing until CI or a local test run verifies them.
+- No always-on runtime, provider credentials, live wallet, fiat checkout,
+  crypto conversion, or USD payout integration has been established.
+- The public status endpoints report registry/ledger state only. All writes
+  are denied unless the separate federation admin token is configured.
