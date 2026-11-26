@@ -145,3 +145,58 @@ def sms():
         comms.send_sms("", "", None)
     except CommsDisabled as e:
         raise HTTPException(403, str(e))
+
+
+# Identity-minimal federation registry. Provisioning requires a separate
+# admin token supplied by the runtime environment; no personal identity data.
+import os
+import secrets as _secrets
+from fastapi import Header
+from .federation import FederationRegistry
+
+federation = FederationRegistry(settings.db_path)
+FEDERATION_ADMIN_TOKEN = os.environ.get("FEDERATION_ADMIN_TOKEN", "")
+
+
+def require_federation_admin(x_federation_admin: str = Header(default="")):
+    if not FEDERATION_ADMIN_TOKEN:
+        raise HTTPException(503, "federation provisioning is locked: admin token is not configured")
+    if not _secrets.compare_digest(x_federation_admin, FEDERATION_ADMIN_TOKEN):
+        raise HTTPException(403, "federation admin authorization required")
+    return True
+
+
+class DivisionIn(BaseModel):
+    slug: str = Field(min_length=3, max_length=40, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$")
+    display_name: str = Field(min_length=1, max_length=80)
+    purpose: str = Field(default="", max_length=500)
+
+
+class MachineAgentIn(BaseModel):
+    division_slug: str = Field(min_length=3, max_length=40)
+    role: str = Field(min_length=1, max_length=30)
+
+
+@app.get("/api/federation/status")
+def federation_status():
+    return federation.status()
+
+
+@app.post("/api/federation/divisions", dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def federation_create_division(payload: DivisionIn):
+    try:
+        division_id = federation.create_division(payload.slug, payload.display_name, payload.purpose)
+        store.log("federation_admin", "division_provisioned", payload.slug)
+        return {"id": division_id, "slug": payload.slug, "status": "PROVISIONED"}
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.post("/api/federation/agents", dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def federation_create_agent(payload: MachineAgentIn):
+    try:
+        result = federation.create_agent(payload.division_slug, payload.role)
+        store.log("federation_admin", "machine_agent_provisioned", result["machine_id"])
+        return result  # token is returned once; only its hash is stored
+    except (ValueError, LookupError) as exc:
+        raise HTTPException(400, str(exc)) from exc
