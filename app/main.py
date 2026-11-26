@@ -231,3 +231,64 @@ def ledger_simulate_event(payload: LedgerEventIn):
         return {"outcome": outcome, "mode": "SIMULATED_ONLY"}
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
+
+
+# Durable agent queue. Agents can claim only work assigned to their division.
+from .agent_runtime import AgentRuntime
+from fastapi import Request
+
+agent_runtime = AgentRuntime(settings.db_path)
+
+
+def require_agent(authorization: str = Header(default="")):
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(401, "machine bearer token required")
+    agent = agent_runtime.authenticate(token)
+    if not agent:
+        raise HTTPException(403, "invalid or inactive machine identity")
+    return agent
+
+
+class TaskIn(BaseModel):
+    task_key: str = Field(min_length=3, max_length=120, pattern=r"^[A-Za-z0-9._:-]+$")
+    division_slug: str = Field(min_length=3, max_length=40)
+    required_role: str = Field(default="", max_length=30)
+    task_type: str = Field(min_length=2, max_length=60)
+    payload: dict = Field(default_factory=dict)
+
+
+class TaskCompleteIn(BaseModel):
+    lease_token: str = Field(min_length=20, max_length=200)
+    result: dict = Field(default_factory=dict)
+
+
+@app.get("/api/runtime/status")
+def runtime_status():
+    return agent_runtime.status()
+
+
+@app.post("/api/runtime/tasks", dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def runtime_enqueue(payload: TaskIn):
+    if not federation.conn.execute("SELECT 1 FROM divisions WHERE slug=?",
+                                   (payload.division_slug,)).fetchone():
+        raise HTTPException(404, "division not found")
+    allowed = {"coordinator", "researcher", "builder", "tester", "analyst", "operator"}
+    if payload.required_role and payload.required_role not in allowed:
+        raise HTTPException(422, "unsupported required role")
+    outcome = agent_runtime.enqueue(payload.task_key, payload.division_slug,
+                                     payload.required_role, payload.task_type, payload.payload)
+    return {"outcome": outcome, "mode": "DURABLE_QUEUE"}
+
+
+@app.post("/api/runtime/claim")
+def runtime_claim(agent: dict = __import__("fastapi").Depends(require_agent)):
+    return agent_runtime.claim(agent) or {"outcome":"no_matching_task"}
+
+
+@app.post("/api/runtime/tasks/{task_id}/complete")
+def runtime_complete(task_id: int, payload: TaskCompleteIn,
+                     agent: dict = __import__("fastapi").Depends(require_agent)):
+    if not agent_runtime.complete(agent, task_id, payload.lease_token, payload.result):
+        raise HTTPException(409, "task lease invalid, expired, or outside agent division")
+    return {"outcome":"completed"}
