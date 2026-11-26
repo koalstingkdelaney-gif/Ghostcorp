@@ -62,3 +62,5 @@ See [`docs/OWNER-HANDOFF.md`](docs/OWNER-HANDOFF.md) for the short list of exter
 See `docs/STATUS.md` for what is implemented, tested, deployed, provider-
 configured, and still blocked. This agency is **not** described as fully
 autonomous or revenue-generating until those capabilities are proven end-to-end.
+
+- [`docs/LOCAL-MODEL-GATEWAY.md`](docs/LOCAL-MODEL-GATEWAY.md): guarded, disabled-by-default local inference adapter; no cloud fallback or paid API.
