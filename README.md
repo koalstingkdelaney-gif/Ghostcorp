@@ -48,6 +48,10 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 - `docs/` — architecture, threat model, product requirements, provider setup,
   operations runbook, status
 
+## Owner handoff
+
+See [`docs/OWNER-HANDOFF.md`](docs/OWNER-HANDOFF.md) for the short list of external account steps, exact official links, and safe secret-handling instructions. Build work should continue without waiting for owner actions.
+
 ## Honest status
 
 See `docs/STATUS.md` for what is implemented, tested, deployed, provider-
