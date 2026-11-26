@@ -292,3 +292,34 @@ def runtime_complete(task_id: int, payload: TaskCompleteIn,
     if not agent_runtime.complete(agent, task_id, payload.lease_token, payload.result):
         raise HTTPException(409, "task lease invalid, expired, or outside agent division")
     return {"outcome":"completed"}
+
+
+# Public engineering journal. Writes require the existing federation admin token.
+from .build_journal import BuildJournal
+build_journal = BuildJournal(settings.db_path)
+
+
+class BuildJournalIn(BaseModel):
+    event_key: str = Field(min_length=3, max_length=120)
+    category: str = Field(min_length=1, max_length=30)
+    title: str = Field(min_length=1, max_length=120)
+    summary: str = Field(min_length=1, max_length=600)
+    state: str = Field(min_length=1, max_length=30)
+    commit_ref: str = Field(default="", max_length=40)
+
+
+@app.get("/api/public/build-journal")
+def public_build_journal(limit: int = 30):
+    """Read-only public log of explicitly published, sanitized milestones."""
+    return build_journal.list_public(limit)
+
+
+@app.post("/api/build-journal/publish",
+          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def publish_build_journal(payload: BuildJournalIn):
+    try:
+        outcome = build_journal.publish(payload.model_dump())
+        store.log("federation_admin", "public_build_journal", payload.event_key + ":" + outcome)
+        return {"outcome": outcome}
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
