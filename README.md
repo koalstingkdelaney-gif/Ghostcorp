@@ -48,6 +48,11 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 - `docs/` — architecture, threat model, product requirements, provider setup,
   operations runbook, status
 
+## Expanded platform architecture
+
+- [`docs/PLATFORM-BLUEPRINT.md`](docs/PLATFORM-BLUEPRINT.md): full target system design and phased implementation.
+- [`docs/OPEN-SOURCE-CATALOGUE.md`](docs/OPEN-SOURCE-CATALOGUE.md): open-source projects, free hosting options, wallet/payment boundaries, and evaluation links.
+
 ## Owner handoff
 
 See [`docs/OWNER-HANDOFF.md`](docs/OWNER-HANDOFF.md) for the short list of external account steps, exact official links, and safe secret-handling instructions. Build work should continue without waiting for owner actions.
