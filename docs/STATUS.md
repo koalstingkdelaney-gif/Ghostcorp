@@ -107,3 +107,22 @@ freshly rerun or independently reverified in this update.
 - GitHub accepted the code and test commits. Tests have not been executed here.
 - The public journal is an API foundation; no automatic scheduled publisher, website widget, or social account integration is active.
 - No GitHub Actions workflow was deployed. The connected repository integration previously reported missing workflow permission. No 24/7 server or worker fleet is live.
+
+
+## Worker queue hardening (2026-11-26)
+
+- Serialized worker-runtime database access within the API process and used
+  SQLite `BEGIN IMMEDIATE` around lease recovery and task claiming to prevent
+  duplicate claims under concurrent workers.
+- Added bounded task/result payload sizes, configurable bounded attempt counts,
+  lease-expiry retries, and a terminal `dead_letter` state after retry
+  exhaustion. Existing SQLite databases are upgraded additively.
+- Added tests for payload-size rejection and retry exhaustion.
+- Commits: `0cbfb865216795d435906f9442183c27ef81228e`,
+  `e48e9858956d78f9e4423c389a702dee9c76e836`,
+  `4a9671ffc65799b888ddfbaa5ee3d4e7dff99a19`.
+- The repository contains `.github/workflows/tests.yml`, which is configured
+  to run pytest on pushes affecting application, scripts, tests, requirements,
+  or the workflow itself. The latest run result has not yet been retrieved.
+- These controls harden queue coordination; they do not create a worker,
+  connect an AI model, deploy a service, or establish 24/7 uptime.
