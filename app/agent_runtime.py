@@ -9,6 +9,7 @@ import json
 import secrets
 import sqlite3
 import time
+import threading
 from pathlib import Path
 
 
@@ -16,10 +17,18 @@ def _now():
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+def _synchronized(method):
+    def wrapped(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+    return wrapped
+
+
 class AgentRuntime:
     def __init__(self, db_path, max_attempts=5, max_payload_bytes=65536):
         if db_path != ":memory:":
             Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.RLock()
         self.conn = sqlite3.connect(db_path, check_same_thread=False, timeout=30)
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA foreign_keys=ON")
@@ -58,6 +67,7 @@ class AgentRuntime:
         self.max_attempts = max(1, min(int(max_attempts), 20))
         self.max_payload_bytes = max(1024, min(int(max_payload_bytes), 262144))
 
+    @_synchronized
     def authenticate(self, token):
         digest = hashlib.sha256(token.encode()).hexdigest()
         row = self.conn.execute(
@@ -68,6 +78,7 @@ class AgentRuntime:
             return None
         return dict(row)
 
+    @_synchronized
     def enqueue(self, key, division, role, task_type, payload):
         encoded = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
         if len(encoded.encode("utf-8")) > self.max_payload_bytes:
@@ -83,6 +94,7 @@ class AgentRuntime:
         except sqlite3.IntegrityError:
             return "duplicate"
 
+    @_synchronized
     def claim(self, agent, lease_seconds=300):
         lease_seconds = max(30, min(int(lease_seconds), 3600))
         now = int(time.time())
@@ -129,6 +141,7 @@ class AgentRuntime:
             self.conn.rollback()
             raise
 
+    @_synchronized
     def complete(self, agent, task_id, lease_token, result):
         encoded = json.dumps(result, separators=(",", ":"), ensure_ascii=False)
         if len(encoded.encode("utf-8")) > self.max_payload_bytes:
@@ -144,6 +157,7 @@ class AgentRuntime:
         self.conn.commit()
         return cur.rowcount == 1
 
+    @_synchronized
     def status(self):
         rows=self.conn.execute(
           "SELECT status,COUNT(*) AS count FROM agent_tasks GROUP BY status"
