@@ -200,3 +200,34 @@ def federation_create_agent(payload: MachineAgentIn):
         return result  # token is returned once; only its hash is stored
     except (ValueError, LookupError) as exc:
         raise HTTPException(400, str(exc)) from exc
+
+from .ledger import SimulationLedger
+
+ledger = SimulationLedger(settings.db_path)
+
+
+class LedgerEventIn(BaseModel):
+    event_id: str = Field(min_length=3, max_length=120)
+    payment_id: str = Field(min_length=3, max_length=120)
+    division_slug: str = Field(min_length=3, max_length=40)
+    event_type: str = Field(min_length=1, max_length=40)
+    amount_minor: int = Field(gt=0)
+    currency: str = Field(min_length=3, max_length=4)
+    details: dict = Field(default_factory=dict)
+
+
+@app.get("/api/ledger/status")
+def ledger_status():
+    return ledger.summary()
+
+
+@app.post("/api/ledger/simulate-event", dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def ledger_simulate_event(payload: LedgerEventIn):
+    try:
+        outcome = ledger.record(payload.event_id, payload.payment_id, payload.division_slug,
+                                payload.event_type, payload.amount_minor, payload.currency,
+                                payload.details)
+        store.log("federation_admin", "ledger_simulation_event", payload.event_id + ":" + outcome)
+        return {"outcome": outcome, "mode": "SIMULATED_ONLY"}
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
