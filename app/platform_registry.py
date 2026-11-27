@@ -48,9 +48,12 @@ class PlatformRegistry:
           node_id TEXT PRIMARY KEY, display_name TEXT NOT NULL,
           consent_version TEXT NOT NULL, resources TEXT NOT NULL,
           status TEXT NOT NULL, token_hash TEXT NOT NULL DEFAULT '',
-          last_seen TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL
+          last_seen TEXT NOT NULL DEFAULT '', metrics TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL
         );
         """)
+        columns = {row[1] for row in self.conn.execute('PRAGMA table_info(compute_contributors)')}
+        if 'metrics' not in columns:
+            self.conn.execute("ALTER TABLE compute_contributors ADD COLUMN metrics TEXT NOT NULL DEFAULT '{}'")
         for slug, title, status in CAPABILITIES:
             self.conn.execute(
                 "INSERT OR IGNORE INTO platform_capabilities VALUES(?,?,?,?,?)",
@@ -64,6 +67,13 @@ class PlatformRegistry:
         return [dict(r) for r in rows]
 
     def enroll(self, display_name, consent_version, resources):
+        display_name = str(display_name).strip()
+        if len(display_name) < 2 or len(display_name) > 80:
+            raise ValueError("display name must contain 2 to 80 characters")
+        if not isinstance(resources, dict):
+            raise ValueError("resources must be an object")
+        if "gpu" in resources and not isinstance(resources["gpu"], bool):
+            raise ValueError("gpu must be a boolean")
         node_id = "gcnode_" + secrets.token_urlsafe(12)
         clean = {
             "cpu_cores": max(0, min(int(resources.get("cpu_cores", 0)), 256)),
@@ -76,7 +86,7 @@ class PlatformRegistry:
             """INSERT INTO compute_contributors
             (node_id,display_name,consent_version,resources,status,created_at)
             VALUES(?,?,?,?,?,?)""",
-            (node_id, display_name.strip(), consent_version, json.dumps(clean),
+            (node_id, display_name, consent_version, json.dumps(clean),
              "PENDING_REVIEW", _now()))
         self.conn.commit()
         return {"node_id": node_id, "status": "PENDING_REVIEW",
@@ -112,8 +122,8 @@ class PlatformRegistry:
             "paused": bool(metrics.get("paused", False)),
         }
         cur = self.conn.execute(
-            "UPDATE compute_contributors SET last_seen=? WHERE node_id=? AND status='ACTIVE'",
-            (_now(), node_id))
+            "UPDATE compute_contributors SET last_seen=?,metrics=? WHERE node_id=? AND status='ACTIVE'",
+            (_now(), json.dumps(safe), node_id))
         self.conn.commit()
         if cur.rowcount != 1:
             raise LookupError("active contributor not found")
@@ -136,6 +146,7 @@ class PlatformRegistry:
         for row in rows:
             item = dict(row)
             item["resources"] = json.loads(item["resources"])
+            item["metrics"] = json.loads(item["metrics"])
             result.append(item)
         return result
 
