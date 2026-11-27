@@ -48,7 +48,7 @@ def test_sandbox_runs_only_fixed_isolated_test_command(tmp_path, monkeypatch):
     assert "--security-opt=no-new-privileges:true" in command
     assert "--memory=512m" in command
     assert "--cpus=1.0" in command
-    assert command[-5:] == ["python", "-I", "-m", "pytest", "-q"]
+    assert command[-7:] == ["python", "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider"]
     assert "GHOSTCORP_SANDBOX_ENABLED" not in captured["kwargs"]["env"]
 
 
