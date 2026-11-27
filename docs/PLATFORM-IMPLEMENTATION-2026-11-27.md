@@ -72,5 +72,5 @@ Run `pytest -q` in the repository environment and validate FastAPI startup. This
 - Intake is bound to active, non-expired workspace registry records and uses no-follow filesystem operations, strict relative paths, single-link regular-file checks, private storage permissions, a 1 MiB default size limit, SHA-256 and source-mutation detection.
 - Built-in inspection classifies text/JSON, archives, executable/script-like content, PDF, images and unknown binary data. It does not extract, render or execute artifacts and always leaves them QUARANTINED with review_required=true.
 - Added docs/ARTIFACT-QUARANTINE.md and docs/ENGINEERING-BACKLOG.md with the next distinct implementation units.
-- CI verification: run 46084749049, commit db8af7f460726f6d29a1f5d02bbe63725c74c628, 93 passed and 1 non-fatal deprecation warning.
+- CI verification: run 46084948753, commit 2af6d589dac7500dacbc02c5e48e290afd63581b, 95 passed and 1 non-fatal deprecation warning.
 - Remaining: no antivirus scanner, owner review/promotion workflow, retention/recovery, configured storage roots, production host or deployment. No contributor work can execute through this feature.
