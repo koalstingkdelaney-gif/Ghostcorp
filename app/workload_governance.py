@@ -10,6 +10,7 @@ import re
 import secrets
 import sqlite3
 import time
+import threading
 from pathlib import PurePosixPath
 
 PROFILES = {
@@ -84,6 +85,7 @@ class QuotaLedger:
     def __init__(self, db_path):
         self.conn = sqlite3.connect(db_path, check_same_thread=False, timeout=10)
         self.conn.row_factory = sqlite3.Row
+        self._lock = threading.RLock()
         self.conn.execute("PRAGMA busy_timeout=10000")
         self.conn.execute("""CREATE TABLE IF NOT EXISTS workload_quota_events (
             reservation_id TEXT PRIMARY KEY, agent_id TEXT NOT NULL,
@@ -101,60 +103,62 @@ class QuotaLedger:
         if not isinstance(seconds, int) or not 1 <= seconds <= 600:
             raise WorkloadPolicyError("reservation must be between 1 and 600 seconds")
         now = int(self._now())
-        self.conn.execute("BEGIN IMMEDIATE")
-        try:
-            prior = self.conn.execute(
-                "SELECT * FROM workload_quota_events WHERE agent_id=? AND task_key=?",
-                (agent_id, task_key)).fetchone()
-            if prior:
+        with self._lock:
+            self.conn.execute("BEGIN IMMEDIATE")
+            try:
+                prior = self.conn.execute(
+                    "SELECT * FROM workload_quota_events WHERE agent_id=? AND task_key=?",
+                    (agent_id, task_key)).fetchone()
+                if prior:
+                    self.conn.commit()
+                    return {**dict(prior), "outcome": "EXISTING"}
+                active = self.conn.execute(
+                    "SELECT COUNT(*) FROM workload_quota_events WHERE agent_id=? AND status='RESERVED'",
+                    (agent_id,)).fetchone()[0]
+                used = self.conn.execute(
+                    "SELECT COALESCE(SUM(CASE WHEN status='SETTLED' THEN actual_seconds ELSE reserved_seconds END),0) "
+                    "FROM workload_quota_events WHERE agent_id=? AND created_at>=?",
+                    (agent_id, now - 86400)).fetchone()[0]
+                if active >= max_active:
+                    raise WorkloadPolicyError("agent concurrent-workload quota reached")
+                if used + seconds > daily_seconds:
+                    raise WorkloadPolicyError("agent daily execution-time quota reached")
+                reservation_id = "gcr_" + secrets.token_urlsafe(12)
+                self.conn.execute(
+                    "INSERT INTO workload_quota_events VALUES(?,?,?,?,0,'RESERVED',?,NULL)",
+                    (reservation_id, agent_id, task_key, seconds, now))
                 self.conn.commit()
-                return {**dict(prior), "outcome": "EXISTING"}
-            active = self.conn.execute(
-                "SELECT COUNT(*) FROM workload_quota_events WHERE agent_id=? AND status='RESERVED'",
-                (agent_id,)).fetchone()[0]
-            used = self.conn.execute(
-                "SELECT COALESCE(SUM(CASE WHEN status='SETTLED' THEN actual_seconds ELSE reserved_seconds END),0) "
-                "FROM workload_quota_events WHERE agent_id=? AND created_at>=?",
-                (agent_id, now - 86400)).fetchone()[0]
-            if active >= max_active:
-                raise WorkloadPolicyError("agent concurrent-workload quota reached")
-            if used + seconds > daily_seconds:
-                raise WorkloadPolicyError("agent daily execution-time quota reached")
-            reservation_id = "gcr_" + secrets.token_urlsafe(12)
-            self.conn.execute(
-                "INSERT INTO workload_quota_events VALUES(?,?,?,?,0,'RESERVED',?,NULL)",
-                (reservation_id, agent_id, task_key, seconds, now))
-            self.conn.commit()
-            return {"reservation_id": reservation_id, "agent_id": agent_id,
-                    "task_key": task_key, "reserved_seconds": seconds,
-                    "status": "RESERVED", "outcome": "CREATED"}
-        except Exception:
-            self.conn.rollback()
-            raise
+                return {"reservation_id": reservation_id, "agent_id": agent_id,
+                        "task_key": task_key, "reserved_seconds": seconds,
+                        "status": "RESERVED", "outcome": "CREATED"}
+            except Exception:
+                self.conn.rollback()
+                raise
 
     def settle(self, reservation_id, actual_seconds):
         if not isinstance(actual_seconds, int) or not 0 <= actual_seconds <= 600:
             raise WorkloadPolicyError("actual execution time must be between 0 and 600 seconds")
-        self.conn.execute("BEGIN IMMEDIATE")
-        try:
-            row = self.conn.execute(
-                "SELECT * FROM workload_quota_events WHERE reservation_id=?",
-                (reservation_id,)).fetchone()
-            if not row:
-                raise LookupError("reservation not found")
-            if row["status"] != "RESERVED":
-                raise WorkloadPolicyError("reservation is already settled")
-            if actual_seconds > row["reserved_seconds"]:
-                raise WorkloadPolicyError("actual time cannot exceed the reserved limit")
-            self.conn.execute(
-                "UPDATE workload_quota_events SET actual_seconds=?,status='SETTLED',settled_at=? "
-                "WHERE reservation_id=?", (actual_seconds, int(self._now()), reservation_id))
-            self.conn.commit()
-            return {"reservation_id": reservation_id, "status": "SETTLED",
-                    "actual_seconds": actual_seconds}
-        except Exception:
-            self.conn.rollback()
-            raise
+        with self._lock:
+            self.conn.execute("BEGIN IMMEDIATE")
+            try:
+                row = self.conn.execute(
+                    "SELECT * FROM workload_quota_events WHERE reservation_id=?",
+                    (reservation_id,)).fetchone()
+                if not row:
+                    raise LookupError("reservation not found")
+                if row["status"] != "RESERVED":
+                    raise WorkloadPolicyError("reservation is already settled")
+                if actual_seconds > row["reserved_seconds"]:
+                    raise WorkloadPolicyError("actual time cannot exceed the reserved limit")
+                self.conn.execute(
+                    "UPDATE workload_quota_events SET actual_seconds=?,status='SETTLED',settled_at=? "
+                    "WHERE reservation_id=?", (actual_seconds, int(self._now()), reservation_id))
+                self.conn.commit()
+                return {"reservation_id": reservation_id, "status": "SETTLED",
+                        "actual_seconds": actual_seconds}
+            except Exception:
+                self.conn.rollback()
+                raise
 
     def status(self, agent_id):
         rows = self.conn.execute(
