@@ -74,3 +74,5 @@ autonomous or revenue-generating until those capabilities are proven end-to-end.
 - [`docs/BUILD-SNAPSHOT-2026-11-27.md`](docs/BUILD-SNAPSHOT-2026-11-27.md): current verified build inventory and missing deployment prerequisites.
 
 - [`docs/PLATFORM-IMPLEMENTATION-2026-11-27.md`](docs/PLATFORM-IMPLEMENTATION-2026-11-27.md): implemented capability tracking and consent-based compute enrollment APIs, plus explicit remaining gaps.
+
+- [`docs/FOUNDATION-ARCHITECTURE.md`](docs/FOUNDATION-ARCHITECTURE.md): expanded system foundation, execution/data/security planes, resource isolation and delivery gates.
