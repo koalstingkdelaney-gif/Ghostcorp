@@ -41,3 +41,34 @@ def test_pending_and_duplicate_approval_are_rejected(tmp_path):
     registry.approve(pending["node_id"])
     with pytest.raises(ValueError):
         registry.approve(pending["node_id"])
+
+
+def test_resource_metrics_are_persisted_and_capacity_is_labelled(tmp_path):
+    registry = PlatformRegistry(str(tmp_path / "platform.db"))
+    pending = registry.enroll(
+        "Compute donor",
+        "ghostcorp-compute-v1",
+        {"cpu_cores": 4, "ram_mb": 8192, "disk_mb": 20000, "gpu": False},
+    )
+    registry.approve(pending["node_id"])
+    registry.heartbeat(
+        pending["node_id"],
+        {"cpu_percent": 25, "ram_used_mb": 2048, "paused": True},
+    )
+    node = registry.list_nodes()[0]
+    assert node["metrics"]["cpu_percent"] == 25.0
+    assert node["metrics"]["paused"] is True
+    capacity = registry.capacity_snapshot()
+    assert capacity["declared_cpu_cores"] == 4
+    assert capacity["declared_ram_mb"] == 8192
+    assert capacity["nodes_reporting"] == 1
+    assert capacity["nodes_paused"] == 1
+    assert "not independently verified" in capacity["note"]
+
+
+def test_enrollment_rejects_invalid_display_name_and_gpu_type(tmp_path):
+    registry = PlatformRegistry(str(tmp_path / "platform.db"))
+    with pytest.raises(ValueError):
+        registry.enroll("  ", "ghostcorp-compute-v1", {})
+    with pytest.raises(ValueError):
+        registry.enroll("Contributor", "ghostcorp-compute-v1", {"gpu": "yes"})
