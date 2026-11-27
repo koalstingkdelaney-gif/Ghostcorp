@@ -182,7 +182,7 @@ freshly rerun or independently reverified in this update.
 - Added strict artifact path validation for dot components, repeated separators and trailing separators.
 - Added app/artifact_quarantine.py: bounded 1 MiB default intake (10 MiB hard ceiling), active/non-expired workspace verification, no-follow path traversal, symlink and hard-link rejection, private 0700 roots, 0600 quarantine objects, SHA-256 hashing, source-mutation detection, and basic content classification.
 - Added owner-admin API routes POST /api/artifacts/quarantine and GET /api/artifacts/quarantine plus public configuration-only GET /api/artifacts/status.
-- Added tests/test_artifact_quarantine.py and API default-deny tests. Latest successful GitHub Actions run: 46084749049 on commit db8af7f460726f6d29a1f5d02bbe63725c74c628; **93 passed, 1 warning**.
+- Added tests/test_artifact_quarantine.py and API default-deny tests. Latest successful GitHub Actions run: 46084948753 on commit 2af6d589dac7500dacbc02c5e48e290afd63581b; **95 passed, 1 warning**.
 - The earlier CI run on commit 6b8959df failed with two test failures; both were addressed, and the latest run is green. The Starlette/httpx deprecation warning remains non-fatal.
 
 ## Current lifecycle status
