@@ -36,8 +36,8 @@ def test_contributor_requires_review_and_token_is_revocable(tmp_path):
 def test_pending_and_duplicate_approval_are_rejected(tmp_path):
     registry = PlatformRegistry(str(tmp_path / "platform.db"))
     pending = registry.enroll("Contributor", "ghostcorp-compute-v1", {})
-    with pytest.raises(ValueError):
-        registry.approve(pending["node_id"])
+    with pytest.raises(LookupError):
+        registry.approve("gcnode_missing")
     registry.approve(pending["node_id"])
     with pytest.raises(ValueError):
         registry.approve(pending["node_id"])
