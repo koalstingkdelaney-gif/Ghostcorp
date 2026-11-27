@@ -32,7 +32,8 @@ Both roots must be pre-created real directories with permissions 0700 or stricte
 
 - No antivirus/malware scanner is configured. The inspector is a small format classifier only; it cannot establish that a file is safe.
 - Archives are never extracted. HTML, scripts, binaries, PDFs and images are never rendered or executed.
-- There is no approval/rejection or promotion endpoint, retention scheduler, restore workflow, or orphan reconciliation yet.
+- Completed copies are written to an opaque .part file and atomically renamed only after size/hash/source-stability checks. Interrupted-copy recovery still needs stale-partial discovery and orphan reconciliation.
+- There is no approval/rejection or promotion endpoint, retention scheduler, or restore workflow yet.
 - No Docker host, trusted scanner image, production backend, or live API configuration is verified.
 - The quarantine feature does not authorize contributor compute or permit arbitrary workload execution.
 
