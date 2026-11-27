@@ -64,8 +64,11 @@ configured, and still blocked. This agency is **not** described as fully
 autonomous or revenue-generating until those capabilities are proven end-to-end.
 
 - [`docs/LOCAL-MODEL-GATEWAY.md`](docs/LOCAL-MODEL-GATEWAY.md): guarded, disabled-by-default local inference adapter; no cloud fallback or paid API.
-- [docs/AGENT-WORLD.md](docs/AGENT-WORLD.md): persistent VR agent identities, daily routines, authenticated presence, and security boundaries.
-- [docs/MILLION-AGENT-WORLD.md](docs/MILLION-AGENT-WORLD.md): target architecture for a million persistent agents, pooled workers, memory, VR scaling, budgets, and staged load tests.
-- [docs/OWNER-SIGN-IN.md](docs/OWNER-SIGN-IN.md): private owner email sign-in requirements and deployment prerequisites.
-
-- [docs/STARTUP-MODEL-FLEET.md](docs/STARTUP-MODEL-FLEET.md): free/open-source model discovery, staged startup, capability routing, resource limits, and safety checks.
+- [`docs/AGENT-WORLD.md`](docs/AGENT-WORLD.md): persistent VR agent identities, daily routines, authenticated presence, and security boundaries.
+- [`docs/MILLION-AGENT-WORLD.md`](docs/MILLION-AGENT-WORLD.md): target architecture for a million persistent agents, pooled workers, memory, VR scaling, budgets, and staged load tests.
+- [`docs/OWNER-SIGN-IN.md`](docs/OWNER-SIGN-IN.md): private owner email sign-in requirements and deployment prerequisites.
+- [`docs/STARTUP-MODEL-FLEET.md`](docs/STARTUP-MODEL-FLEET.md): free/open-source model discovery, staged startup, capability routing, resource limits, and safety checks.
+- [`docs/GHOSTCORP-VIRTUAL-OPERATING-SYSTEM.md`](docs/GHOSTCORP-VIRTUAL-OPERATING-SYSTEM.md): unified VR-centered business OS specification.
+- [`docs/EXPANSION-CATALOGUE.md`](docs/EXPANSION-CATALOGUE.md): 1,200 planned capability entries across 30 departments. Catalogue entries are not claims of implementation.
+- [`docs/DISTRIBUTED-COMPUTE.md`](docs/DISTRIBUTED-COMPUTE.md): opt-in community compute, contributor agent, sandbox, trust model, and Meshtastic boundaries.
+- [`docs/BUILD-SNAPSHOT-2026-11-27.md`](docs/BUILD-SNAPSHOT-2026-11-27.md): current verified build inventory and missing deployment prerequisites.
