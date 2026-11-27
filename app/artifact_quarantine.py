@@ -7,6 +7,7 @@ or described as malware-free. A real malware scanner is not configured here.
 import hashlib
 import json
 import os
+import re
 import secrets
 import sqlite3
 import stat
@@ -16,7 +17,7 @@ from pathlib import Path
 
 from .workload_governance import WorkloadPolicyError, validate_artifact_name
 
-_WORKSPACE_ID = __import__("re").compile(r"^ws_[a-f0-9]{32}$")
+_WORKSPACE_ID = re.compile(r"^ws_[a-f0-9]{32}$")
 _ARTIFACT_ID = "gca_"
 _DEFAULT_MAX_BYTES = 1_048_576
 _ALLOWED_TEXT = {".txt", ".md", ".csv", ".log", ".json"}
@@ -213,7 +214,11 @@ class ArtifactQuarantine:
 
     def quarantine(self, workspace_id, artifact_name):
         source_fd, workspace, before = self._open_workspace_file(workspace_id, artifact_name)
-        quarantine_fd = self._open_directory(self.quarantine_root, create=True)
+        try:
+            quarantine_fd = self._open_directory(self.quarantine_root, create=True)
+        except Exception:
+            os.close(source_fd)
+            raise
         artifact_id = _ARTIFACT_ID + secrets.token_hex(16)
         stored_name = artifact_id + ".bin"
         destination_fd = None
@@ -239,6 +244,8 @@ class ArtifactQuarantine:
                 view = memoryview(chunk)
                 while view:
                     written = os.write(destination_fd, view)
+                    if written <= 0:
+                        raise OSError("quarantine write made no progress")
                     view = view[written:]
             after = os.fstat(source_fd)
             if total < 1 or after.st_size != before.st_size or after.st_mtime_ns != before.st_mtime_ns or total != before.st_size:
