@@ -323,3 +323,39 @@ def publish_build_journal(payload: BuildJournalIn):
         return {"outcome": outcome}
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
+
+
+# Persistent VR world registry. World profiles mirror provisioned machine agents;
+# presence is LIVE only after a signed-in machine agent sends a recent heartbeat.
+from .agent_world import AgentWorld
+agent_world = AgentWorld(settings.db_path)
+
+
+class WorldHeartbeatIn(BaseModel):
+    zone: str = Field(default="", max_length=40)
+    activity: str = Field(default="", max_length=80)
+
+
+@app.get("/api/world/snapshot",
+         dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def world_snapshot():
+    agent_world.sync_registry(federation)
+    return agent_world.snapshot()
+
+
+@app.get("/api/world/events",
+         dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def world_events(limit: int = 50):
+    return agent_world.recent_events(limit)
+
+
+@app.post("/api/world/heartbeat")
+def world_heartbeat(payload: WorldHeartbeatIn,
+                    agent: dict = __import__("fastapi").Depends(require_agent)):
+    agent_world.sync_registry(federation)
+    try:
+        result = agent_world.heartbeat(agent["machine_id"], payload.zone, payload.activity)
+        store.log(agent["machine_id"], "world_heartbeat", result["zone"] + ":" + result["activity"])
+        return result
+    except (ValueError, LookupError) as exc:
+        raise HTTPException(422, str(exc)) from exc
