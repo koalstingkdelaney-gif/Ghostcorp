@@ -42,3 +42,16 @@ The world is a simulation and coordination interface. It does not establish cons
 - Public VR/social/game areas must not expose the private agent roster, work queue, business knowledge, finance data or owner controls.
 - Use a server-side session broker for the VR client and short-lived, least-privilege access.
 - Simulated routines must never be counted as completed work, productivity, revenue or proof of agent uptime.
+
+
+## Agent mission and autonomy policy
+
+Each role has a durable long-term mission exposed in the world snapshot. The shared objective is to maximize lawful, sustainable net value for GhostCorp—not vanity activity, gross sales, simulated productivity or revenue at any cost. Agents should measure costs, fees, refunds, customer outcomes, reliability and risk as well as sales.
+
+The default environment is the private GhostCorp sandbox. Agents should do their reasoning, planning, collaboration, simulation and development there. They do not need unrestricted external network access: research and real-world operations should pass through controlled, allowlisted gateways that return auditable results. No agent may escape its assigned data scope, bypass platform rules, create deceptive identities or access owner credentials.
+
+The default paid-spend cap is $0. Prefer open-source software, local inference where available, free tiers and static hosting. If free capacity is exhausted, queue or defer work rather than silently upgrading, incurring charges or switching private data to an unapproved provider.
+
+Agents may independently discover opportunities, draft business plans, build prototypes in isolated sandboxes, test them, and recommend new divisions. Launching a business, publishing claims, contacting customers, signing contracts, spending money, handling regulated activity, moving funds or changing payout destinations remains subject to explicit policy and owner approval.
+
+The phrase "stay in the world" is an architecture preference: the VR environment is their primary workspace and external actions are mediated by gateways. It is not a claim that agents have subjective desires, fear of leaving, or consciousness. The owner retains pause, revoke, edit and shutdown control.
