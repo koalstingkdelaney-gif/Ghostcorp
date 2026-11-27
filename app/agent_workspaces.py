@@ -21,7 +21,7 @@ class WorkspacePolicyError(ValueError):
 
 class AgentWorkspaceManager:
     def __init__(self, db_path, root=None, clock=None):
-        self.root = Path(root).expanduser().resolve() if root else None
+        self.root = Path(root).expanduser().absolute() if root else None
         self.clock = clock or time.time
         self._lock = threading.RLock()
         self.conn = sqlite3.connect(db_path, check_same_thread=False, timeout=10)
