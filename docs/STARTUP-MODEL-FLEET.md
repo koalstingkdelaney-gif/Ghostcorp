@@ -1,94 +1,91 @@
-# GhostCorp Self-Provisioning AI Model Runtime
+# GhostCorp VR-Local AI Model Runtime
 
-**Status:** clarified target architecture; not yet implemented, deployed or running.
+**Status:** owner requirement clarified; architecture specified, not yet implemented or tested on a headset.
 
-## What the owner wants
+## Non-negotiable requirement
 
-The owner should sign in to the private GhostCorp website and the virtual world should automatically discover, configure and use suitable AI models—such as Llama-family models—without requiring the owner to install runtimes, manage model files, run Termux, maintain a PC, or manually provision servers.
+AI inference must run inside the GhostCorp virtual-world experience, in the browser/runtime on the device displaying the world. The website is only the entry point and static delivery source for the world, runtime code, model manifests and model files.
 
-GitHub is the source-code and release home. ghostcorpnet.com is the user-facing entry point. Neither GitHub Pages nor a static website is a general-purpose GPU server. A private website login authenticates the owner; it does not itself supply compute, storage, model licenses or inference quota.
+Do not require a separate AI server, hosted inference API, cloud GPU, user's PC, Termux, or owner-operated infrastructure. Do not route prompts to a remote model provider. The default and intended mode is local-only inference.
 
-## Required operating model
+The private website sign-in controls access to the private GhostCorp world. It does not provide compute. Authentication must not expose passwords, session secrets or model-management secrets to agent prompts or public assets.
 
-GhostCorp must be self-provisioning within the compute it is actually authorized and able to use:
+## Startup behavior
 
-1. The private owner session starts the world and requests a backend startup check.
-2. A server-side orchestrator checks which approved inference runtimes and compute providers are already configured and available.
-3. It discovers compatible open-weight models (including Llama-family options where their licenses and provider terms permit use), checks hardware/runtime requirements and selects the best eligible models.
-4. It prepares models on an authorized runtime, or connects to an approved hosted inference endpoint. Model downloads and startup happen server-side where possible—not in the browser.
-5. It starts a small shared worker pool, health-checks it and routes agent tasks to the appropriate model.
-6. It continues discovery and warm-up in the background while the VR world opens.
-7. It shows the owner truthful statuses: discovered, compatible, downloaded, loaded, serving, unavailable, or waiting for capacity.
+1. Owner signs in to the private GhostCorp website and opens the VR world.
+2. The world feature-detects WebGPU, Web Workers, storage capacity and WebXR support at runtime. Do not assume support based on user-agent strings.
+3. The world loads its local inference engine and signed/verified model manifest from the website's static assets.
+4. It checks the device's available memory, GPU capability, storage quota and thermal/battery conditions where exposed.
+5. It selects a compatible model profile automatically. Start with a small quantized model; offer Llama-family models only where a compatible browser build and model license exist.
+6. It downloads the selected model weights directly to browser-managed persistent storage/cache, with progress, pause/resume where supported, integrity verification and an explicit storage estimate.
+7. It initializes inference in a Web Worker using WebGPU where supported, without blocking VR rendering.
+8. It runs a real local inference self-test before showing the model as ready.
+9. It caches models for subsequent visits and loads them from local storage when available.
+10. The world opens even if model download or WebGPU initialization fails; show a truthful local-AI unavailable or limited-mode state.
 
-The owner should not have to perform routine model setup. Any unavoidable first-time provider authorization, account verification, terms acceptance, or resource permission must be shown clearly and cannot be bypassed by an agent.
+## Where everything runs
 
-## Critical compute constraint
+- VR scene, agent interface, orchestration and inference execute in the browser/runtime on the user's current device.
+- Model weights are downloaded from GhostCorp's static website or a configured public model-file source, then cached by the browser on that device.
+- Prompts, completions, agent memories and inference context stay on-device in local browser storage unless the owner separately enables a clearly disclosed sync feature. No such sync is part of the local-only default.
+- GitHub is for source code and release assets, not model execution.
+- No remote inference endpoints or cloud AI APIs are permitted in local-only mode.
 
-A model must execute somewhere. The browser can run some small quantized models on the owner's current device using WebGPU/WebAssembly where supported, but that consumes the device's battery, memory and processing power, depends on browser/headset compatibility, and is not a shared always-on backend. This is an optional fallback, not the primary architecture.
+A static website can distribute model files and code, but cannot provide extra CPU/GPU/RAM. The headset itself performs the computation. The world must never imply otherwise.
 
-A GitHub repository stores code and model manifests; GitHub Pages serves static files. GitHub Actions are temporary automation jobs, not a permanent inference host. A static website cannot silently turn itself into a Llama server. If the owner has no spare device or existing server, GhostCorp needs an authorized hosted compute provider or a genuinely available free inference service.
+## Model fleet: catalogue vs. active models
 
-Free hosted capacity is limited, can change, and may require an account, verified access, rate limits or usage terms. There is no honest way to promise thousands of models running continuously for free without actual compute capacity. Do not imply that the website or GitHub supplies this automatically.
+GhostCorp can maintain a catalogue containing thousands of model entries and variants. It must not attempt to download or load thousands at once. A headset has finite memory, storage, GPU throughput, battery and thermal capacity.
 
-## Free-first provider strategy
+The runtime should:
+- automatically discover models from a versioned manifest;
+- filter by license, runtime compatibility, quantization, size and device capability;
+- load one primary model first;
+- optionally load small specialist models sequentially or on demand if memory allows;
+- unload inactive models and release GPU buffers;
+- enforce a strict local memory and storage budget;
+- allow the owner to choose whether additional model downloads are permitted over the current connection.
 
-- Default paid spend remains **USD $0**. Never silently upgrade, subscribe, purchase GPU time, or use a paid fallback.
-- Prefer open-weight models with compatible licenses and provider-supported free inference where available.
-- Use provider-hosted inference when it is the only compute available and the provider's current free quota and terms permit it.
-- Keep provider adapters modular so providers can be added or removed without changing the VR client.
-- Store provider credentials only as server-side deployment secrets. Never put them in Git, website JavaScript, browser storage, VR assets, model prompts or public logs.
-- Use the owner sign-in to authorize access to the private control panel; use separate server-side provider credentials and narrowly scoped service identities for inference.
-- If no authorized free compute is available, mark the runtime as waiting for capacity and queue work. Do not pretend a model is active.
+Report these separately: catalogued, compatible, downloaded, cached, loaded, actively generating, unavailable. A catalogue entry is not a running model.
 
-## Thousands of models vs. running models
+## Implementation direction
 
-GhostCorp may maintain a catalogue of thousands of compatible model entries and model variants. It should not attempt to download or load all of them at startup. It should select and warm a small useful set based on capability, license, availability, latency and resource limits. Other models remain discoverable and dormant until needed.
+Use an in-browser inference runtime such as WebLLM/MLC with WebGPU, or another permissively licensed runtime that supports the target browser. Keep the engine behind a small provider interface so a future runtime can be substituted without changing agent identities or the VR world.
 
-Report these counts separately:
-- catalogued model entries;
-- license/provenance validated;
-- compatible with configured runtime;
-- downloaded/cached;
-- loaded in memory;
-- actively serving requests;
-- currently unavailable or waiting for quota.
+Use Web Workers for inference. Keep the render loop responsive. Feature-detect capabilities at runtime and gracefully fall back to a smaller CPU/WASM model only if performance is acceptable. Do not silently fall back to cloud inference.
 
-A catalogue entry is not a running model. A downloaded model is not necessarily loaded. A loaded model is not necessarily serving requests.
+Model manifest entries must include source, exact revision, cryptographic hash, license, quantization, required runtime version, estimated download size and minimum device requirements. Verify hashes before loading. Do not execute arbitrary remote model code.
 
-## Runtime architecture
+## Quest and hardware constraints
 
-- **Private owner authentication:** verified sign-in and short-lived sessions; no shared admin token in the frontend.
-- **Server-side orchestrator:** startup, provider discovery, model selection, lifecycle and health status.
-- **Model registry:** IDs, revisions, hashes, licenses, sources, capabilities and hardware requirements.
-- **Provider adapters:** local runtime and approved hosted inference interfaces, disabled until explicitly configured.
-- **Worker pool:** bounded shared workers, leases, queues, retries and concurrency limits.
-- **Model cache:** server-side storage with quotas, integrity checks and eviction policy.
-- **Capability router:** selects a suitable approved model for each task and tracks latency, quality and quota.
-- **VR status bridge:** returns scoped readiness and activity data through the authenticated owner session; never exposes secrets.
+Meta Quest Browser release notes list WebGPU support in WebXR in Browser 156.0, but actual availability and usable memory vary by headset, OS/browser version, experimental flags and device state. Runtime feature detection and real Quest testing are mandatory.
 
-## Safety and operational controls
+A Quest headset is not a data center. Large Llama models may not fit or may run too slowly. Start with a small model and measure real performance before increasing model size. Do not claim that millions of agents can each run their own independent LLM on one headset.
 
-Verify model provenance, revision and license. Do not execute arbitrary repository code or remote custom model code by default. Scan dependencies and isolate model-serving processes. Restrict network egress and tool access. Treat all model outputs and retrieved content as untrusted. Apply per-model, per-agent, per-division and global resource limits, audit events, owner pause/revoke controls and emergency shutdown.
+The million-agent world concept must use simulated/persistent agent identities and a scheduler that shares a small number of local model instances across agents. Agents can take turns and keep separate memories/goals; they do not each require a separate model process.
 
-Models must not receive owner credentials, wallet secrets, payment details or unrestricted production permissions. High-impact business actions remain behind explicit owner approvals.
+## Privacy and controls
 
-## Startup experience
-
-The virtual world should not wait for every model. It opens its environment, displays the runtime initialization state, and progressively makes available the approved models as they become ready. If compute is unavailable, the world still opens in a limited/offline mode and clearly reports that AI inference is not currently available.
+- No prompts, memories or completions leave the device in local-only mode.
+- No remote telemetry containing user content.
+- No provider API keys or cloud inference credentials.
+- Clear owner controls for model downloads, local data deletion, pause and shutdown.
+- Separate private GhostCorp business data from public game/social spaces.
+- External business actions remain unavailable from the local model unless a separately designed, owner-approved gateway is added later.
 
 ## Acceptance tests
 
-- The owner can sign in without exposing provider secrets to the browser.
-- Startup detects configured providers and reports unavailable providers without crashing the world.
-- A permitted Llama-family model can be selected and started on a configured runtime.
-- No model is marked serving until a real inference health check succeeds.
-- No paid provider is called when the spend cap is zero.
-- No provider credentials means no false claim of hosted inference; the UI shows setup/capacity required.
-- The VR world opens even while model discovery is pending or unavailable.
-- Model counts distinguish catalogue, compatible, downloaded, loaded and serving.
-- Repeated startup does not create duplicate workers or incur unexpected downloads.
-- Owner pause/revoke disables the affected runtime and credentials.
+- Open the private website and launch the VR world without a separate server or user-installed app.
+- Verify WebGPU/WebXR and storage capabilities on the actual target headset.
+- Download a compatible small model from the world and verify its hash.
+- Generate a response locally with network access disabled after the model is cached.
+- Confirm inference runs in a worker and does not freeze VR rendering.
+- Confirm prompts and outputs are not sent to a remote inference endpoint.
+- Confirm model readiness only after a real local generation test.
+- Confirm the world remains navigable when local AI is unsupported or model download fails.
+- Confirm model counts distinguish catalogue, cached, loaded and actively generating.
+- Confirm multiple agent identities share the local runtime under bounded scheduling rather than spawning one model process per agent.
 
 ## Current reality
 
-The existing GhostCorp backend has a guarded local-model gateway that is disabled by default, a basic agent world-state foundation and documentation for private owner sign-in. It does not yet have production owner authentication, a deployed orchestrator, a configured hosted inference provider, a model registry, a running Llama runtime, always-on compute or a deployed VR-to-backend session bridge. This specification describes the desired behavior; none of those runtime capabilities should be represented as already working.
+The existing GhostCorp backend has a basic agent-world state foundation, but the VR website does not yet have a working local model runtime, model manifest, browser cache manager, local agent scheduler or Quest-tested inference integration. This document specifies the target architecture; it is not evidence that local Llama inference is already working.
