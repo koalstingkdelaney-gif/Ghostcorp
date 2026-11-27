@@ -119,3 +119,24 @@ def test_missing_configuration_fails_closed(tmp_path):
     assert quarantine.status()["enabled"] is False
     with pytest.raises(ArtifactQuarantineUnavailable):
         quarantine.quarantine("ws_" + "a" * 32, "artifact.txt")
+
+
+def test_quarantine_root_must_be_existing_private_directory(tmp_path):
+    _, workspace, quarantine, root, quarantine_root = setup_quarantine(tmp_path)
+    (root / workspace["workspace_id"] / "result.txt").write_text("result", encoding="utf-8")
+    quarantine_root.chmod(0o755)
+    assert quarantine.status()["enabled"] is False
+    with pytest.raises(ArtifactPolicyError):
+        quarantine.quarantine(workspace["workspace_id"], "result.txt")
+
+
+def test_quarantine_root_symlink_is_rejected(tmp_path):
+    _, workspace, quarantine, root, quarantine_root = setup_quarantine(tmp_path)
+    (root / workspace["workspace_id"] / "result.txt").write_text("result", encoding="utf-8")
+    real = tmp_path / "real-quarantine"
+    real.mkdir(mode=0o700)
+    quarantine_root.rmdir()
+    quarantine_root.symlink_to(real, target_is_directory=True)
+    assert quarantine.status()["enabled"] is False
+    with pytest.raises(ArtifactPolicyError):
+        quarantine.quarantine(workspace["workspace_id"], "result.txt")
