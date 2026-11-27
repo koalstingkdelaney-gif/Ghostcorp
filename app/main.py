@@ -620,3 +620,48 @@ def workspace_release(workspace_id: str):
 def workspace_cleanup_expired():
     guard_mutation()
     return {"items": workspace_manager.cleanup_expired()}
+
+
+# Artifact quarantine: bounded, non-executing intake from an active agent workspace.
+# Files remain private and pending review; no archive extraction or malware-free claim.
+from .artifact_quarantine import (
+    ArtifactPolicyError, ArtifactQuarantine, ArtifactQuarantineUnavailable,
+)
+
+artifact_quarantine = ArtifactQuarantine(
+    settings.db_path,
+    os.environ.get("GHOSTCORP_WORKSPACE_ROOT") or None,
+    os.environ.get("GHOSTCORP_ARTIFACT_QUARANTINE_ROOT") or None,
+)
+
+
+class ArtifactQuarantineIn(BaseModel):
+    workspace_id: str = Field(min_length=35, max_length=35, pattern=r"^ws_[a-f0-9]{32}$")
+    artifact_name: str = Field(min_length=1, max_length=180)
+
+
+@app.get("/api/artifacts/status")
+def artifact_quarantine_status():
+    return artifact_quarantine.status()
+
+
+@app.post("/api/artifacts/quarantine",
+          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def artifact_quarantine_ingest(payload: ArtifactQuarantineIn):
+    guard_mutation()
+    try:
+        result = artifact_quarantine.quarantine(payload.workspace_id, payload.artifact_name)
+        store.log("federation_admin", "artifact_quarantined", result["artifact_id"])
+        return result
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ArtifactQuarantineUnavailable as exc:
+        raise HTTPException(503, str(exc)) from exc
+    except ArtifactPolicyError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.get("/api/artifacts/quarantine",
+         dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def artifact_quarantine_list(limit: int = 100):
+    return {"items": artifact_quarantine.list(limit)}
