@@ -237,14 +237,16 @@ class ArtifactQuarantine:
             raise
         artifact_id = _ARTIFACT_ID + secrets.token_hex(16)
         stored_name = artifact_id + ".bin"
+        partial_name = artifact_id + ".part"
         destination_fd = None
-        created = False
+        partial_created = False
+        final_created = False
         try:
             destination_fd = os.open(
-                stored_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                partial_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
                 0o600, dir_fd=quarantine_fd,
             )
-            created = True
+            partial_created = True
             digest = hashlib.sha256()
             chunks = []
             total = 0
@@ -267,6 +269,12 @@ class ArtifactQuarantine:
             if total < 1 or after.st_size != before.st_size or after.st_mtime_ns != before.st_mtime_ns or total != before.st_size:
                 raise ArtifactPolicyError("artifact changed while it was being quarantined")
             os.fsync(destination_fd)
+            os.close(destination_fd)
+            destination_fd = None
+            os.rename(partial_name, stored_name, src_dir_fd=quarantine_fd,
+                      dst_dir_fd=quarantine_fd)
+            partial_created = False
+            final_created = True
             inspected = _inspect_bytes(b"".join(chunks), artifact_name)
             now = int(self.clock())
             record = {
@@ -298,11 +306,12 @@ class ArtifactQuarantine:
                     raise
             return record
         except Exception:
-            if created:
-                try:
-                    os.unlink(stored_name, dir_fd=quarantine_fd)
-                except OSError:
-                    pass
+            for name, exists in ((partial_name, partial_created), (stored_name, final_created)):
+                if exists:
+                    try:
+                        os.unlink(name, dir_fd=quarantine_fd)
+                    except OSError:
+                        pass
             raise
         finally:
             if destination_fd is not None:
