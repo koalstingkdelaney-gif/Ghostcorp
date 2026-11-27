@@ -455,3 +455,8 @@ def compute_heartbeat(payload: ContributorHeartbeatIn,
         return platform_registry.heartbeat(node["node_id"], payload.model_dump())
     except LookupError as exc:
         raise HTTPException(403, str(exc)) from exc
+
+
+@app.get("/api/platform/compute/capacity")
+def compute_capacity():
+    return platform_registry.capacity_snapshot()
