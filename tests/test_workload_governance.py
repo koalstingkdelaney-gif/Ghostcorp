@@ -45,7 +45,7 @@ def test_quota_enforces_daily_budget_and_settlement_bounds(tmp_path):
         ledger.reserve("agent_123", "task:004", 1)
 
 
-@pytest.mark.parametrize("name", ["../secret", "/etc/passwd", ".env", "a/../b", "a\\b"])
+@pytest.mark.parametrize("name", ["../secret", "/etc/passwd", ".env", "a/../b", "a\\b", "a/./b", "a//b", "a/"])
 def test_artifact_path_traversal_is_rejected(name):
     with pytest.raises(WorkloadPolicyError):
         validate_artifact_name(name)
