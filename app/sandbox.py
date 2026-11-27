@@ -58,7 +58,7 @@ class DockerSandbox:
             "--tmpfs=/tmp:rw,noexec,nosuid,nodev,size=64m",
             "--mount", f"type=bind,src={self.workspace},dst=/workspace,readonly",
             "--workdir=/workspace",
-            self.image, "python", "-I", "-m", "pytest", "-q",
+            self.image, "python", "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider",
         ]
         try:
             completed = subprocess.run(
