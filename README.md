@@ -78,3 +78,8 @@ autonomous or revenue-generating until those capabilities are proven end-to-end.
 - [`docs/FOUNDATION-ARCHITECTURE.md`](docs/FOUNDATION-ARCHITECTURE.md): expanded system foundation, execution/data/security planes, resource isolation and delivery gates.
 
 - [`docs/SANDBOXING.md`](docs/SANDBOXING.md): fixed-workload Docker sandbox controls, setup requirements and remaining hardening.\n- [`docs/WORKLOAD-GOVERNANCE.md`](docs/WORKLOAD-GOVERNANCE.md): signed workload manifests, fixed profiles, per-agent quotas and artifact path policy.
+
+
+### Agent workspaces
+
+- [Agent-specific workspace allocation](docs/AGENT-WORKSPACES.md) — owner-gated empty workspace lifecycle, expiry and cleanup. This is not a code-execution or host-isolation service.
