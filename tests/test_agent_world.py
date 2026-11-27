@@ -55,3 +55,13 @@ def test_event_history_is_bounded_by_requested_limit(tmp_path):
     world.heartbeat(agent["machine_id"], "research-lab")
     world.heartbeat(agent["machine_id"], "research-library")
     assert len(world.recent_events(1)) == 1
+
+
+def test_agents_have_business_missions_and_free_first_world_policy(tmp_path):
+    registry, world, agent = setup(tmp_path)
+    world.sync_registry(registry)
+    snapshot = world.snapshot()
+    assert "net revenue" in snapshot["agents"][0]["long_term_mission"]
+    assert snapshot["world_policy"]["default_paid_spend_usd"] == 0
+    assert snapshot["world_policy"]["owner_override"] is True
+    assert snapshot["world_policy"]["agent_work_environment"] == "private GhostCorp sandbox"
