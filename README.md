@@ -72,3 +72,5 @@ autonomous or revenue-generating until those capabilities are proven end-to-end.
 - [`docs/EXPANSION-CATALOGUE.md`](docs/EXPANSION-CATALOGUE.md): 1,200 planned capability entries across 30 departments. Catalogue entries are not claims of implementation.
 - [`docs/DISTRIBUTED-COMPUTE.md`](docs/DISTRIBUTED-COMPUTE.md): opt-in community compute, contributor agent, sandbox, trust model, and Meshtastic boundaries.
 - [`docs/BUILD-SNAPSHOT-2026-11-27.md`](docs/BUILD-SNAPSHOT-2026-11-27.md): current verified build inventory and missing deployment prerequisites.
+
+- [`docs/PLATFORM-IMPLEMENTATION-2026-11-27.md`](docs/PLATFORM-IMPLEMENTATION-2026-11-27.md): implemented capability tracking and consent-based compute enrollment APIs, plus explicit remaining gaps.
