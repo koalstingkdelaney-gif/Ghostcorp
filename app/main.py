@@ -642,7 +642,10 @@ class ArtifactQuarantineIn(BaseModel):
 
 @app.get("/api/artifacts/status")
 def artifact_quarantine_status():
-    return artifact_quarantine.status()
+    state = artifact_quarantine.status()
+    state["owner_admin_gate_configured"] = bool(FEDERATION_ADMIN_TOKEN)
+    state["enabled"] = state["enabled"] and bool(FEDERATION_ADMIN_TOKEN)
+    return state
 
 
 @app.post("/api/artifacts/quarantine",
