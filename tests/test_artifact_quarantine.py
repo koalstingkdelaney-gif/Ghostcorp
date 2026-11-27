@@ -142,3 +142,11 @@ def test_quarantine_root_symlink_is_rejected(tmp_path):
     assert quarantine.status()["enabled"] is False
     with pytest.raises(ArtifactPolicyError):
         quarantine.quarantine(workspace["workspace_id"], "result.txt")
+
+
+def test_special_fifo_artifact_is_rejected_without_blocking(tmp_path):
+    _, workspace, quarantine, root, _ = setup_quarantine(tmp_path)
+    fifo = root / workspace["workspace_id"] / "named-pipe"
+    os.mkfifo(fifo)
+    with pytest.raises(ArtifactPolicyError):
+        quarantine.quarantine(workspace["workspace_id"], "named-pipe")
