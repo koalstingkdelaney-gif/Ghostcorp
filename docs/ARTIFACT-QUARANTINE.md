@@ -10,7 +10,7 @@ Artifacts are copied only from an active, unexpired agent workspace into a separ
 
 - Owner-admin-only POST /api/artifacts/quarantine and GET /api/artifacts/quarantine routes; public GET /api/artifacts/status reports configuration only.
 - Requires the workspace ID to exist in the SQLite workspace registry, remain ACTIVE, and not be expired.
-- Uses strict relative artifact paths; rejects absolute paths, hidden components, traversal, empty/dot components, repeated separators and Windows separators.
+- Uses strict relative artifact paths; rejects absolute paths, hidden components, traversal, empty/dot components, repeated separators and Windows separators. Opens regular-file and marker descriptors non-blocking so FIFO/special-file paths cannot hang intake.
 - Opens the workspace and each directory component with no-follow semantics. Rejects symlinks, non-regular files and hard-linked files.
 - Requires private workspace and quarantine roots (mode 0700 or stricter) and stores opaque quarantine objects with mode 0600.
 - Enforces a default 1 MiB file limit (hard constructor ceiling 10 MiB), hashes content with SHA-256, checks for source mutation during copy, and stores metadata rather than file contents in SQLite.
@@ -39,4 +39,4 @@ Both roots must be pre-created real directories with permissions 0700 or stricte
 
 ## Verification
 
-The automated test suite covers normal text intake, hashing, private file mode, archive/executable flags, traversal, symlinked files/directories, expired workspaces, hard links, size limits and default-deny API behavior. Latest verification: GitHub Actions run 46084948753 on commit 2af6d589dac7500dacbc02c5e48e290afd63581b completed successfully with 95 passed and 1 non-fatal deprecation warning.
+The automated test suite covers normal text intake, hashing, private file mode, archive/executable flags, traversal, symlinked files/directories, expired workspaces, hard links, size limits and default-deny API behavior. Latest verification: GitHub Actions run 46085364193 on commit 733f125c32af4b3886811d4ee385804755940b01 completed successfully with 96 passed and 1 non-fatal deprecation warning.
