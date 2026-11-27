@@ -180,6 +180,8 @@ def validate_artifact_name(name):
         raise WorkloadPolicyError("invalid artifact name")
     if "\\" in name:
         raise WorkloadPolicyError("artifact names must use POSIX separators")
+    if name.startswith("/") or name.endswith("/") or "//" in name or any(part in {"", ".", ".."} for part in name.split("/")):
+        raise WorkloadPolicyError("artifact path must be a strict relative path")
     path = PurePosixPath(name)
     if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
         raise WorkloadPolicyError("artifact path must be a safe relative path")
