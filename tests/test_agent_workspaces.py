@@ -49,3 +49,13 @@ def test_release_refuses_missing_or_changed_marker(tmp_path):
     marker.write_text("tampered")
     with pytest.raises(WorkspacePolicyError):
         manager.release(item["workspace_id"])
+
+
+def test_workspace_root_symlink_is_rejected(tmp_path):
+    target = tmp_path / "actual"
+    target.mkdir()
+    link = tmp_path / "linked"
+    link.symlink_to(target, target_is_directory=True)
+    manager = AgentWorkspaceManager(str(tmp_path / "db.sqlite"), str(link))
+    with pytest.raises(WorkspacePolicyError):
+        manager.create("agent_one")
