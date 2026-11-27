@@ -27,7 +27,8 @@
 #### GC-OPS-REC-02 — Interrupted-copy recovery and orphan reconciliation
 - **Status:** PLANNED
 - **Dependencies:** artifact quarantine storage.
-- **Acceptance:** copy uses temporary names and atomic finalization; startup/maintenance scan identifies stale partial files and metadata-without-file/file-without-metadata cases; dry-run and repair modes are separately exposed.
+- **Progress:** quarantine writes use an opaque .part file and atomic rename after bounded copy and source-stability checks.
+- **Acceptance:** startup/maintenance scan identifies stale partial files and metadata-without-file/file-without-metadata cases; dry-run and repair modes are separately exposed.
 - **Security checks:** never auto-promote; verify generated filename, file type, size and hash; no recursive deletion; owner gate for destructive repair.
 
 #### GC-OPS-REC-03 — Workspace cleanup reference protection
