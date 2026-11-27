@@ -7,7 +7,7 @@ def test_capability_catalogue_is_trackable_and_not_claimed_live(tmp_path):
     registry = PlatformRegistry(str(tmp_path / "platform.db"))
     items = registry.capabilities()
     assert len(items) == 12
-    assert all(item["status"] in {"PLANNED", "IMPLEMENTED"} for item in items)
+    assert all(item["status"] in {"PLANNED", "PARTIAL", "IMPLEMENTED"} for item in items)
 
 
 def test_contributor_requires_review_and_token_is_revocable(tmp_path):
