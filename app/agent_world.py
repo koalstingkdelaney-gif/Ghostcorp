@@ -11,7 +11,7 @@ from pathlib import Path
 
 MISSION_BY_ROLE = {
     "coordinator": "Grow lawful GhostCorp net revenue by coordinating teams, validating results, and protecting owner priorities.",
-    "researcher": "Discover evidence-backed customer problems, market opportunities, free resources, and viable business ideas.",
+    "researcher": "Discover evidence-backed customer problems, market opportunities, and free resources that can grow lawful net revenue.",
     "builder": "Turn approved opportunities into useful products, services, software, and repeatable business systems.",
     "tester": "Improve reliability, security, quality, and customer trust while preventing costly failures.",
     "analyst": "Measure net revenue, costs, conversion, retention, risk, and evidence quality; recommend profitable improvements.",
