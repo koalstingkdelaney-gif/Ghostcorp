@@ -1,4 +1,4 @@
-# Status — 2026-11-23
+# Status — 2026-11-27 (rolling engineering record)
 
 ## Repository work completed in this update
 
@@ -173,3 +173,23 @@ freshly rerun or independently reverified in this update.
 - This is directory lifecycle bookkeeping only, not container/OS isolation,
   code execution, artifact quarantine, or a deployed workspace service.
 - Tests have not been executed in this environment.
+
+
+## CI repair and artifact quarantine increment (2026-11-27)
+
+- Fixed the researcher mission text so the research role explicitly includes lawful net-revenue outcomes.
+- Corrected a contradictory contributor-approval test: unknown contributor IDs are rejected, a pending contributor can be approved once, and duplicate approval is rejected. The registry's existing owner-review model was preserved.
+- Added strict artifact path validation for dot components, repeated separators and trailing separators.
+- Added app/artifact_quarantine.py: bounded 1 MiB default intake (10 MiB hard ceiling), active/non-expired workspace verification, no-follow path traversal, symlink and hard-link rejection, private 0700 roots, 0600 quarantine objects, SHA-256 hashing, source-mutation detection, and basic content classification.
+- Added owner-admin API routes POST /api/artifacts/quarantine and GET /api/artifacts/quarantine plus public configuration-only GET /api/artifacts/status.
+- Added tests/test_artifact_quarantine.py and API default-deny tests. Latest successful GitHub Actions run: 46084749049 on commit db8af7f460726f6d29a1f5d02bbe63725c74c628; **93 passed, 1 warning**.
+- The earlier CI run on commit 6b8959df failed with two test failures; both were addressed, and the latest run is green. The Starlette/httpx deprecation warning remains non-fatal.
+
+## Current lifecycle status
+
+- **IMPLEMENTED IN CODE:** agent-specific empty workspaces; signed workload manifests and quota ledger; artifact quarantine copy/hash/metadata/content classification; owner-admin route guards; automated tests.
+- **PARTIAL / DISABLED BY DEFAULT:** workspace and quarantine storage. Both private host roots and the owner-admin secret must be configured before intake can run.
+- **PLANNED:** malware scanning, owner review decisions, safe export/promotion, quarantine retention and orphan recovery, cleanup reference protection, contributor consent portal, remote job execution, per-job rootless isolation, and VR-to-backend owner session.
+- **NOT VERIFIED DEPLOYED:** backend hosting, production API, worker processes, contributor execution, malware scanner, owner sign-in, or VR business-system integration.
+- **Website / VR repository:** existing Three.js/WebXR page and in-headset developer workbench are present in the repository. The live cache-busted page previously showed the workbench control; headset entry, controller operation, and direct GitHub publishing from inside Quest are not verified.
+- **No production deployment, DNS change, paid service, contributor execution, customer-data access, or financial action was performed in this increment.**
