@@ -191,7 +191,7 @@ class ArtifactQuarantine:
             workspace_info = os.fstat(workspace_fd)
             if stat.S_IMODE(workspace_info.st_mode) & 0o077:
                 raise ArtifactPolicyError("workspace permissions are not private")
-            marker_fd = os.open(".ghostcorp-workspace", os.O_RDONLY | os.O_NOFOLLOW, dir_fd=workspace_fd)
+            marker_fd = os.open(".ghostcorp-workspace", os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0), dir_fd=workspace_fd)
             try:
                 marker_info = os.fstat(marker_fd)
                 if not stat.S_ISREG(marker_info.st_mode) or os.read(marker_fd, 128).decode("utf-8", "replace") != workspace_id:
@@ -205,7 +205,7 @@ class ArtifactQuarantine:
                 next_fd = os.open(part, self._directory_flags(), dir_fd=parent_fd)
                 opened_dirs.append(next_fd)
                 parent_fd = next_fd
-            source_fd = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent_fd)
+            source_fd = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0), dir_fd=parent_fd)
             info = os.fstat(source_fd)
             if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
                 raise ArtifactPolicyError("artifact must be a single-link regular file")
