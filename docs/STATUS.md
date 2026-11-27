@@ -150,3 +150,12 @@ freshly rerun or independently reverified in this update.
 - Added docs/AGENT-WORLD.md describing presence semantics, deployment stages, privacy boundaries and the distinction between simulated routine and actual live work.
 - GitHub accepted the commits. Tests have not been run in this environment.
 - No API host, scheduler, model worker, agent heartbeat process, VR-to-API session bridge, or actual live AI population is deployed. Agents without a recent heartbeat are reported as SIMULATED, not LIVE. This work does not create or prove sentience.
+
+
+## Agent business mission and owner sign-in specification (2026-11-27)
+
+- Added role-specific long-term business missions and a world policy reporting a $0 default paid-spend cap, private sandbox preference, controlled external gateways and owner override.
+- Added tests for the world mission and free-first policy. Tests have not been run here.
+- Added docs/OWNER-SIGN-IN.md. The requested owner mailbox must remain a private deployment setting and be verified by a real authentication provider; it has not been configured or activated.
+- Documented that the static public website does not currently provide verified owner email login or a session bridge to the backend.
+- No live AI workers, autonomous business creation, email login, always-on hosting or revenue generation are established by these commits.
