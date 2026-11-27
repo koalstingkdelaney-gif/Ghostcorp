@@ -105,10 +105,26 @@ class ArtifactQuarantine:
         )""")
         self.conn.commit()
 
+    @staticmethod
+    def _private_directory_ready(path):
+        if path is None:
+            return False
+        try:
+            info = path.lstat()
+        except OSError:
+            return False
+        return (stat.S_ISDIR(info.st_mode) and not stat.S_ISLNK(info.st_mode)
+                and not (stat.S_IMODE(info.st_mode) & 0o077))
+
     def status(self):
         configured = bool(self.workspace_root and self.quarantine_root)
+        workspace_ready = self._private_directory_ready(self.workspace_root)
+        quarantine_ready = self._private_directory_ready(self.quarantine_root)
         return {
-            "enabled": configured,
+            "enabled": configured and workspace_ready and quarantine_ready,
+            "configured": configured,
+            "workspace_root_ready": workspace_ready,
+            "quarantine_root_ready": quarantine_ready,
             "workspace_root_configured": bool(self.workspace_root),
             "quarantine_root_configured": bool(self.quarantine_root),
             "max_file_bytes": self.max_bytes,
@@ -215,7 +231,7 @@ class ArtifactQuarantine:
     def quarantine(self, workspace_id, artifact_name):
         source_fd, workspace, before = self._open_workspace_file(workspace_id, artifact_name)
         try:
-            quarantine_fd = self._open_directory(self.quarantine_root, create=True)
+            quarantine_fd = self._open_directory(self.quarantine_root)
         except Exception:
             os.close(source_fd)
             raise
