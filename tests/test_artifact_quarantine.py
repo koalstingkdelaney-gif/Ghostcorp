@@ -17,6 +17,7 @@ def setup_quarantine(tmp_path, clock=None, max_bytes=1_048_576):
     manager = AgentWorkspaceManager(db, str(workspace_root), clock=clock)
     workspace = manager.create("agent_123", 600)
     quarantine_root = tmp_path / "quarantine"
+    quarantine_root.mkdir(mode=0o700)
     quarantine = ArtifactQuarantine(
         db, str(workspace_root), str(quarantine_root),
         clock=clock, max_bytes=max_bytes,
