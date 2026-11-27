@@ -8,9 +8,13 @@
 - A SQLite quota ledger provides idempotent reservations, one default concurrent reservation per agent, a rolling 24-hour budget of 1,800 seconds, and settlement that cannot exceed reserved time.
 - Artifact-name validation rejects absolute paths, traversal, hidden paths, null bytes and Windows-style separators.
 
-## Important boundary
+## Artifact quarantine increment
 
-This is authorization and accounting infrastructure only. It does not dispatch or execute contributor code, download packages, inspect binary contents, or make an untrusted host safe. The current Docker adapter still runs only its fixed public test command. A future artifact pipeline must copy outputs into a quarantine area, reject symlinks and oversized files, scan content, and publish only explicitly approved artifacts.
+The backend now includes a bounded, owner-admin-gated artifact intake path. It copies regular files only from active, non-expired agent workspaces into a separate private quarantine root, rejects symlinks/hard links and unsafe relative paths, enforces size limits, hashes content, and classifies common text/archive/executable/document formats. All objects remain QUARANTINED and pending review.
+
+See ARTIFACT-QUARANTINE.md for the API, configuration and limitations. This is not antivirus scanning: no malware scanner is configured, archives are not extracted, and there is no approval, export or promotion endpoint. The intake routes remain unavailable until both private storage roots and the owner-admin token are configured.
+
+This is still authorization, accounting and quarantine infrastructure only. It does not dispatch or execute contributor code, download packages, or make an untrusted host safe. The Docker adapter still runs only its fixed public test command.
 
 ## Configuration
 
@@ -18,8 +22,8 @@ Set `GHOSTCORP_WORKLOAD_SIGNING_KEY` to a randomly generated secret of at least 
 
 ## Next gates
 
-1. Add authenticated API routes and durable audit events for issuing manifests and reserving/settling quotas.
-2. Add per-job temporary workspaces and cleanup/recovery.
-3. Add artifact quarantine, file-type inspection, malware scanning and signed provenance.
-4. Add rootless/container isolation and security tests before any contributor workload is enabled.
+1. Add an owner review decision ledger; keep all quarantined files non-executable and non-public.
+2. Add a pinned, offline malware-scanner adapter that fails closed when unavailable.
+3. Add retention, interrupted-copy recovery and orphan reconciliation; protect workspaces referenced by unresolved artifacts.
+4. Add rootless per-job isolation and cross-agent/race security tests before any contributor workload is enabled.
 5. Add a public contributor consent portal and a downloadable, signed, transparent node agent only after the above gates pass.
