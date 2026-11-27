@@ -64,3 +64,13 @@ Run `pytest -q` in the repository environment and validate FastAPI startup. This
 - Added unit tests for manifest tampering/expiry, quota limits/idempotency, and artifact path validation.
 
 **Still blocked:** no trusted Docker host/image is configured; no actual contributor workload is dispatched; no per-job workspace lifecycle, artifact quarantine/content inspection, signed downloadable contributor agent, rootless multi-tenant runtime, or security review is complete. No test run or production deployment is verified in this session.
+
+
+## Artifact quarantine increment (2026-11-27)
+
+- Added app/artifact_quarantine.py and owner-admin routes for bounded artifact intake and metadata listing.
+- Intake is bound to active, non-expired workspace registry records and uses no-follow filesystem operations, strict relative paths, single-link regular-file checks, private storage permissions, a 1 MiB default size limit, SHA-256 and source-mutation detection.
+- Built-in inspection classifies text/JSON, archives, executable/script-like content, PDF, images and unknown binary data. It does not extract, render or execute artifacts and always leaves them QUARANTINED with review_required=true.
+- Added docs/ARTIFACT-QUARANTINE.md and docs/ENGINEERING-BACKLOG.md with the next distinct implementation units.
+- CI verification: run 46084749049, commit db8af7f460726f6d29a1f5d02bbe63725c74c628, 93 passed and 1 non-fatal deprecation warning.
+- Remaining: no antivirus scanner, owner review/promotion workflow, retention/recovery, configured storage roots, production host or deployment. No contributor work can execute through this feature.
