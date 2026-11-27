@@ -460,3 +460,25 @@ def compute_heartbeat(payload: ContributorHeartbeatIn,
 @app.get("/api/platform/compute/capacity")
 def compute_capacity():
     return platform_registry.capacity_snapshot()
+
+
+# Fixed-workload sandbox adapter. Disabled by default and owner-admin gated.
+from .sandbox import DockerSandbox, SandboxUnavailable
+sandbox_runner = DockerSandbox()
+
+
+@app.get("/api/sandbox/status")
+def sandbox_status():
+    return sandbox_runner.status()
+
+
+@app.post("/api/sandbox/run-public-tests",
+          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def sandbox_run_public_tests():
+    guard_mutation()
+    try:
+        return sandbox_runner.run_public_tests()
+    except SandboxUnavailable as exc:
+        raise HTTPException(503, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
