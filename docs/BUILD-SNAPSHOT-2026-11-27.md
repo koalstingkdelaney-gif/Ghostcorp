@@ -51,6 +51,11 @@
 - Distributed compute and community mesh protocol in `DISTRIBUTED-COMPUTE.md`.
 - All catalogue entries remain PLANNED until code, tests and deployment evidence exist.
 
+## Latest automated verification
+
+- Backend GitHub Actions run 46084948753 completed successfully on 2026-11-27: 95 passed, 1 non-fatal Starlette/httpx deprecation warning.
+- This verifies the repository test suite only; it does not verify a deployed backend, configured storage roots, malware scanning or Quest headset operation.
+
 ## Operating principles
 
 - Existing domain and repositories remain the foundation.
