@@ -18,7 +18,7 @@ def _now():
 
 CAPABILITIES = [
     ("infrastructure-discovery", "Discover permitted free infrastructure", "PLANNED"),
-    ("distributed-compute", "Opt-in contributor compute registry", "IMPLEMENTED"),
+    ("distributed-compute", "Opt-in contributor compute registry", "PARTIAL"),
     ("corporate-partnerships", "Corporate compute partnership pipeline", "PLANNED"),
     ("mesh-communications", "Meshtastic low-bandwidth communications adapter", "PLANNED"),
     ("persistent-memory", "Durable vector and knowledge-graph memory", "PLANNED"),
@@ -26,7 +26,7 @@ CAPABILITIES = [
     ("model-operations", "Local model catalogue and resource-aware routing", "PLANNED"),
     ("business-communications", "Authorized email and customer communication", "PLANNED"),
     ("security-recovery", "Security monitoring and recovery workflows", "PLANNED"),
-    ("finance-controls", "Ledger, budget and payout approval controls", "IMPLEMENTED"),
+    ("finance-controls", "Ledger, budget and payout approval controls", "PARTIAL"),
     ("vr-business-console", "VR headquarters business console", "PLANNED"),
     ("disaster-recovery", "Backup, failover and recovery verification", "PLANNED"),
 ]
