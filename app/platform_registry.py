@@ -150,10 +150,31 @@ class PlatformRegistry:
             result.append(item)
         return result
 
+    def capacity_snapshot(self):
+        rows = self.conn.execute(
+            "SELECT resources,metrics,last_seen FROM compute_contributors WHERE status='ACTIVE'"
+        ).fetchall()
+        totals = {"registered_nodes": len(rows), "declared_cpu_cores": 0,
+                  "declared_ram_mb": 0, "declared_disk_mb": 0,
+                  "nodes_reporting": 0, "nodes_paused": 0}
+        for row in rows:
+            resources = json.loads(row["resources"])
+            metrics = json.loads(row["metrics"])
+            totals["declared_cpu_cores"] += resources.get("cpu_cores", 0)
+            totals["declared_ram_mb"] += resources.get("ram_mb", 0)
+            totals["declared_disk_mb"] += resources.get("disk_mb", 0)
+            if row["last_seen"]:
+                totals["nodes_reporting"] += 1
+            if metrics.get("paused"):
+                totals["nodes_paused"] += 1
+        totals["note"] = "Contributor-declared capacity, not independently verified or currently schedulable."
+        return totals
+
     def summary(self):
         rows = self.conn.execute(
             "SELECT status,COUNT(*) AS n FROM compute_contributors GROUP BY status").fetchall()
         return {"contributors_by_status": {r["status"]: r["n"] for r in rows},
                 "capabilities_tracked": len(CAPABILITIES),
+                "capacity": self.capacity_snapshot(),
                 "remote_code_execution": False,
                 "compute_mode": "CONSENT_REGISTRY_ONLY"}
