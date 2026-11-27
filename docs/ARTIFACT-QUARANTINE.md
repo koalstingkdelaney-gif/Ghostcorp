@@ -26,7 +26,7 @@ Set these only in the trusted backend runtime environment:
 - GHOSTCORP_ARTIFACT_QUARANTINE_ROOT: a separate private directory for quarantined objects.
 - FEDERATION_ADMIN_TOKEN: existing owner-admin gate, managed outside Git.
 
-Both roots must be real directories with permissions 0700 or stricter. Do not put either path on the public website. The endpoint remains disabled if either root is missing.
+Both roots must be pre-created real directories with permissions 0700 or stricter. The API does not create the quarantine root automatically. Do not put either path on the public website. Status reports enabled only when both roots exist and are private; intake remains disabled if either root is missing or too permissive.
 
 ## Important limitations
 
