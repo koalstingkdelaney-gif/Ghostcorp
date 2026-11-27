@@ -39,3 +39,16 @@ Public enrollment does not equal permission to run work. Only approved nodes rec
 ## Local verification still required
 
 Run `pytest -q` in the repository environment and validate FastAPI startup. This code-writing session did not execute the test suite or deploy the service.
+
+
+## Follow-up foundation hardening
+
+- Contributor enrollment now validates display-name length, resource object shape and strict GPU boolean type.
+- Contributor heartbeat metrics are persisted, not merely returned.
+- Capacity inventory reports contributor-declared CPU/RAM/disk and paused/reporting counts, explicitly labelled as unverified declarations.
+- New read-only endpoint: `GET /api/platform/compute/capacity`.
+- Tests expanded for telemetry persistence, capacity aggregation and invalid enrollment input.
+- Added [FOUNDATION-ARCHITECTURE.md](FOUNDATION-ARCHITECTURE.md), defining the experience, control, execution, memory, communications, distributed infrastructure, business, security and reliability planes.
+- The 1,200-entry catalogue remains a planned capability inventory; no catalogue item becomes live merely because it is listed.
+
+**Verification note:** GitHub Actions test execution has not been confirmed in this session. The source changes are committed; do not treat the tests as passing until CI reports success.
