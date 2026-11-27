@@ -35,7 +35,8 @@ def test_release_and_expiry_cleanup(tmp_path):
     second = manager.create("agent_two", 600)
     clock[0] = 1061
     assert manager.cleanup_expired() == [{"workspace_id": first["workspace_id"], "status": "RELEASED"}]
-    assert manager.list()[0]["status"] == "ACTIVE"
+    active = next(item for item in manager.list() if item["agent_id"] == "agent_two")
+    assert active["status"] == "ACTIVE"
     assert not (tmp_path / "work" / first["workspace_id"]).exists()
     manager.release(second["workspace_id"])
     assert manager.list()[0]["status"] == "RELEASED"
