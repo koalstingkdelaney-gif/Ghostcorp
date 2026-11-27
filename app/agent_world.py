@@ -9,6 +9,15 @@ import threading
 import time
 from pathlib import Path
 
+MISSION_BY_ROLE = {
+    "coordinator": "Grow lawful GhostCorp net revenue by coordinating teams, validating results, and protecting owner priorities.",
+    "researcher": "Discover evidence-backed customer problems, market opportunities, free resources, and viable business ideas.",
+    "builder": "Turn approved opportunities into useful products, services, software, and repeatable business systems.",
+    "tester": "Improve reliability, security, quality, and customer trust while preventing costly failures.",
+    "analyst": "Measure net revenue, costs, conversion, retention, risk, and evidence quality; recommend profitable improvements.",
+    "operator": "Keep approved GhostCorp services reliable, secure, recoverable, and within zero-cost or approved budgets.",
+}
+
 ROUTINES = {
     "coordinator": [
         (0, 6, "planning", "Review priorities and prepare the daily plan", "command-center"),
@@ -168,12 +177,14 @@ class AgentWorld:
                     "zone": data["zone"] if live else routine["zone"],
                     "activity": data["activity"] if live else routine["activity"],
                     "activity_description": routine["description"],
+                    "long_term_mission": MISSION_BY_ROLE.get(data["role"], "Advance GhostCorp approved goals safely."),
                     "presence": "LIVE" if live else "SIMULATED",
                     "heartbeat_at": data["heartbeat_at"] or None,
                 })
             counts = {"total": len(agents), "live": sum(a["presence"] == "LIVE" for a in agents),
                       "simulated": sum(a["presence"] == "SIMULATED" for a in agents)}
             return {"mode": "WORLD_SIMULATION_WITH_AUTHENTICATED_PRESENCE",
+                    "world_policy": {"primary_goal": "maximize lawful net value for GhostCorp", "default_paid_spend_usd": 0, "agent_work_environment": "private GhostCorp sandbox", "external_actions": "controlled gateways only", "owner_override": True},
                     "world_time_utc": _utc(), "counts": counts, "agents": agents}
 
     def recent_events(self, limit=50):
