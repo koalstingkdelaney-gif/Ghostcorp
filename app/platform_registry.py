@@ -140,7 +140,7 @@ class PlatformRegistry:
 
     def list_nodes(self):
         rows = self.conn.execute(
-            """SELECT node_id,display_name,consent_version,resources,status,last_seen,created_at
+            """SELECT node_id,display_name,consent_version,resources,status,last_seen,metrics,created_at
             FROM compute_contributors ORDER BY created_at DESC""").fetchall()
         result = []
         for row in rows:
