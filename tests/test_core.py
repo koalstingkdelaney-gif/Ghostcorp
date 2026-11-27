@@ -101,6 +101,7 @@ def test_artifact_quarantine_api_is_disabled_and_owner_gated():
     assert status.status_code == 200
     assert status.json()["enabled"] is False
     assert status.json()["automatic_release"] is False
+    assert "owner_admin_gate_configured" in status.json()
     assert client.post(
         "/api/artifacts/quarantine",
         json={"workspace_id": "ws_" + "a" * 32, "artifact_name": "result.txt"},
