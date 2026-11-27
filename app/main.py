@@ -482,3 +482,86 @@ def sandbox_run_public_tests():
         raise HTTPException(503, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
+
+
+# Workload governance: signed fixed-profile manifests and durable per-agent quotas.
+# These controls authorize/account for work only; they do not dispatch or execute it.
+from .workload_governance import WorkloadAuthority, WorkloadPolicyError, QuotaLedger
+
+workload_authority = WorkloadAuthority(os.environ.get("GHOSTCORP_WORKLOAD_SIGNING_KEY", ""))
+workload_quotas = QuotaLedger(settings.db_path)
+
+
+class WorkloadManifestIn(BaseModel):
+    workload_type: str = Field(min_length=3, max_length=60)
+    agent_id: str = Field(min_length=3, max_length=80)
+    source_revision: str = Field(min_length=40, max_length=40)
+    ttl_seconds: int = Field(default=900, ge=60, le=3600)
+
+
+class QuotaReserveIn(BaseModel):
+    agent_id: str = Field(min_length=3, max_length=80)
+    task_key: str = Field(min_length=3, max_length=120)
+    seconds: int = Field(ge=1, le=600)
+
+
+class QuotaSettleIn(BaseModel):
+    reservation_id: str = Field(min_length=8, max_length=100)
+    actual_seconds: int = Field(ge=0, le=600)
+
+
+@app.get("/api/workloads/catalog")
+def workload_catalog():
+    from .workload_governance import PROFILES
+    return {"workloads": PROFILES,
+            "execution_enabled": False,
+            "note": "Profiles are authorization templates only; no remote workload runner is enabled."}
+
+
+@app.post("/api/workloads/manifest",
+          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def workload_manifest_issue(payload: WorkloadManifestIn):
+    guard_mutation()
+    try:
+        manifest = workload_authority.issue(
+            payload.workload_type, payload.agent_id, payload.source_revision,
+            payload.ttl_seconds)
+        store.log("federation_admin", "workload_manifest_issued", manifest["workload_id"])
+        return manifest
+    except WorkloadPolicyError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.post("/api/workloads/quotas/reserve",
+          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def workload_quota_reserve(payload: QuotaReserveIn):
+    guard_mutation()
+    try:
+        result = workload_quotas.reserve(payload.agent_id, payload.task_key, payload.seconds)
+        store.log("federation_admin", "workload_quota_reserved",
+                  result.get("reservation_id", payload.task_key))
+        return result
+    except WorkloadPolicyError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.post("/api/workloads/quotas/settle",
+          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def workload_quota_settle(payload: QuotaSettleIn):
+    guard_mutation()
+    try:
+        result = workload_quotas.settle(payload.reservation_id, payload.actual_seconds)
+        store.log("federation_admin", "workload_quota_settled", payload.reservation_id)
+        return result
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except WorkloadPolicyError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.get("/api/workloads/quotas/{agent_id}",
+         dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def workload_quota_status(agent_id: str):
+    if not __import__("re").fullmatch(r"[A-Za-z0-9_-]{3,80}", agent_id):
+        raise HTTPException(422, "invalid agent identity")
+    return workload_quotas.status(agent_id)
