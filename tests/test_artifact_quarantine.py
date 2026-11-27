@@ -40,6 +40,7 @@ def test_text_artifact_is_hashed_copied_and_kept_quarantined(tmp_path):
     assert "malware_scanner_not_configured" in result["risk_flags"]
     stored = list(quarantine_root.glob("*.bin"))
     assert len(stored) == 1
+    assert not list(quarantine_root.glob("*.part"))
     assert stored[0].read_bytes() == artifact.read_bytes()
     assert stat.S_IMODE(stored[0].stat().st_mode) == 0o600
     listed = quarantine.list()
@@ -106,6 +107,7 @@ def test_size_limit_and_hardlinks_are_rejected(tmp_path):
     (folder / "large.txt").write_bytes(b"12345")
     with pytest.raises(ArtifactPolicyError):
         quarantine.quarantine(workspace["workspace_id"], "large.txt")
+    assert list((tmp_path / "quarantine").iterdir()) == []
 
     outside = tmp_path / "outside-hardlink.txt"
     outside.write_text("data", encoding="utf-8")
