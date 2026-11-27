@@ -140,3 +140,13 @@ freshly rerun or independently reverified in this update.
 - The code is **not connected to the agent queue**, Ollama is not installed or
   configured on a host, and no model is running. Tests have not been confirmed
   green. No always-on inference service is claimed.
+
+
+## Persistent VR agent-world foundation (2026-11-27)
+
+- Added app/agent_world.py to mirror provisioned machine agents into persistent world profiles with role-based daily routines, allowed workspace zones, authenticated heartbeats, and bounded event history.
+- Added admin-protected GET /api/world/snapshot and GET /api/world/events; added machine-token-authenticated POST /api/world/heartbeat.
+- Added tests/test_agent_world.py for registry sync, live presence, routine selection, zone validation, and event history.
+- Added docs/AGENT-WORLD.md describing presence semantics, deployment stages, privacy boundaries and the distinction between simulated routine and actual live work.
+- GitHub accepted the commits. Tests have not been run in this environment.
+- No API host, scheduler, model worker, agent heartbeat process, VR-to-API session bridge, or actual live AI population is deployed. Agents without a recent heartbeat are reported as SIMULATED, not LIVE. This work does not create or prove sentience.
