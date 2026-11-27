@@ -90,3 +90,19 @@ def test_api_health_and_comms_endpoints():
     r = client.post("/api/leads", json={"name": "Test Co", "email": "t@example.com",
                                         "service": "AI Website"})
     assert r.json()["outcome"] in ("added", "duplicate")
+
+
+def test_artifact_quarantine_api_is_disabled_and_owner_gated():
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    client = TestClient(app)
+    status = client.get("/api/artifacts/status")
+    assert status.status_code == 200
+    assert status.json()["enabled"] is False
+    assert status.json()["automatic_release"] is False
+    assert client.post(
+        "/api/artifacts/quarantine",
+        json={"workspace_id": "ws_" + "a" * 32, "artifact_name": "result.txt"},
+    ).status_code == 503
+    assert client.get("/api/artifacts/quarantine").status_code == 503
