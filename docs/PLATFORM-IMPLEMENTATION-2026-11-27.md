@@ -52,3 +52,15 @@ Run `pytest -q` in the repository environment and validate FastAPI startup. This
 - The 1,200-entry catalogue remains a planned capability inventory; no catalogue item becomes live merely because it is listed.
 
 **Verification note:** GitHub Actions test execution has not been confirmed in this session. The source changes are committed; do not treat the tests as passing until CI reports success.
+
+
+## Follow-on sandbox and workload-governance increment
+
+- Added `app/sandbox.py` and `GET /api/sandbox/status` plus owner-admin-gated `POST /api/sandbox/run-public-tests`. This runs only the fixed public pytest command with network disabled, read-only mounts/filesystem, dropped capabilities, non-root UID, CPU/memory/process limits and bounded output/time. It is not a general-purpose code runner.
+- Added `app/workload_governance.py`: fixed workload profiles, short-lived HMAC-signed manifests bound to an agent and immutable commit SHA, and a SQLite per-agent quota ledger with idempotent reservations, a default one-active-job limit and a 1,800-second rolling 24-hour budget.
+- Added admin-gated endpoints: `GET /api/workloads/catalog`, `POST /api/workloads/manifest`, `POST /api/workloads/quotas/reserve`, `POST /api/workloads/quotas/settle`, and `GET /api/workloads/quotas/{agent_id}`.
+- Added artifact path-name validation to reject traversal and unsafe relative paths. This is not yet artifact content scanning or quarantine.
+- Manifest issuance requires `GHOSTCORP_WORKLOAD_SIGNING_KEY` (at least 32 characters) in the deployment secret manager. It is not committed and must not be placed in frontend code.
+- Added unit tests for manifest tampering/expiry, quota limits/idempotency, and artifact path validation.
+
+**Still blocked:** no trusted Docker host/image is configured; no actual contributor workload is dispatched; no per-job workspace lifecycle, artifact quarantine/content inspection, signed downloadable contributor agent, rootless multi-tenant runtime, or security review is complete. No test run or production deployment is verified in this session.
