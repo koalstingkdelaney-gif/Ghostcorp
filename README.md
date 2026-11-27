@@ -67,3 +67,5 @@ autonomous or revenue-generating until those capabilities are proven end-to-end.
 - [docs/AGENT-WORLD.md](docs/AGENT-WORLD.md): persistent VR agent identities, daily routines, authenticated presence, and security boundaries.
 - [docs/MILLION-AGENT-WORLD.md](docs/MILLION-AGENT-WORLD.md): target architecture for a million persistent agents, pooled workers, memory, VR scaling, budgets, and staged load tests.
 - [docs/OWNER-SIGN-IN.md](docs/OWNER-SIGN-IN.md): private owner email sign-in requirements and deployment prerequisites.
+
+- [docs/STARTUP-MODEL-FLEET.md](docs/STARTUP-MODEL-FLEET.md): free/open-source model discovery, staged startup, capability routing, resource limits, and safety checks.
