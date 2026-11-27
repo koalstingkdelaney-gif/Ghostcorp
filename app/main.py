@@ -565,3 +565,58 @@ def workload_quota_status(agent_id: str):
     if not __import__("re").fullmatch(r"[A-Za-z0-9_-]{3,80}", agent_id):
         raise HTTPException(422, "invalid agent identity")
     return workload_quotas.status(agent_id)
+
+
+# Agent-specific temporary workspace allocation. This creates empty directories
+# only; it is not an execution or host-isolation boundary.
+from .agent_workspaces import AgentWorkspaceManager, WorkspacePolicyError
+workspace_manager = AgentWorkspaceManager(
+    settings.db_path, os.environ.get("GHOSTCORP_WORKSPACE_ROOT") or None)
+
+
+class WorkspaceCreateIn(BaseModel):
+    agent_id: str = Field(min_length=3, max_length=80)
+    ttl_seconds: int = Field(default=3600, ge=60, le=86400)
+
+
+@app.get("/api/workspaces/status")
+def workspace_status():
+    return workspace_manager.status()
+
+
+@app.get("/api/workspaces",
+         dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def workspace_list(agent_id: str = ""):
+    try:
+        return {"items": workspace_manager.list(agent_id or None)}
+    except WorkspacePolicyError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.post("/api/workspaces",
+          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def workspace_create(payload: WorkspaceCreateIn):
+    guard_mutation()
+    try:
+        return workspace_manager.create(payload.agent_id, payload.ttl_seconds)
+    except WorkspacePolicyError as exc:
+        raise HTTPException(503 if "not configured" in str(exc) else 422, str(exc)) from exc
+
+
+@app.post("/api/workspaces/{workspace_id}/release",
+          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def workspace_release(workspace_id: str):
+    guard_mutation()
+    try:
+        return workspace_manager.release(workspace_id)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except WorkspacePolicyError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.post("/api/workspaces/cleanup-expired",
+          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def workspace_cleanup_expired():
+    guard_mutation()
+    return {"items": workspace_manager.cleanup_expired()}
