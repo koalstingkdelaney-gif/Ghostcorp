@@ -159,3 +159,17 @@ freshly rerun or independently reverified in this update.
 - Added docs/OWNER-SIGN-IN.md. The requested owner mailbox must remain a private deployment setting and be verified by a real authentication provider; it has not been configured or activated.
 - Documented that the static public website does not currently provide verified owner email login or a session bridge to the backend.
 - No live AI workers, autonomous business creation, email login, always-on hosting or revenue generation are established by these commits.
+
+
+## Agent-specific workspace allocation (2026-11-27)
+
+- Added `app/agent_workspaces.py`: empty per-agent directories with random IDs,
+  mode-0700 permissions, SQLite metadata, bounded expiry, marker-checked
+  release, and explicit expired-workspace cleanup.
+- Added owner-admin API routes under `/api/workspaces`; allocation is disabled
+  unless `GHOSTCORP_WORKSPACE_ROOT` is configured.
+- Added `tests/test_agent_workspaces.py` for separation, disabled defaults,
+  invalid identities, expiry cleanup, and marker validation.
+- This is directory lifecycle bookkeeping only, not container/OS isolation,
+  code execution, artifact quarantine, or a deployed workspace service.
+- Tests have not been executed in this environment.
