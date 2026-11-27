@@ -359,3 +359,99 @@ def world_heartbeat(payload: WorldHeartbeatIn,
         return result
     except (ValueError, LookupError) as exc:
         raise HTTPException(422, str(exc)) from exc
+
+
+# Platform expansion: capability tracking and opt-in community compute.
+# Enrollment is public but creates PENDING_REVIEW records only. No remote code
+# execution is exposed by this API. Approval issues a scoped node credential.
+from .platform_registry import PlatformRegistry
+platform_registry = PlatformRegistry(settings.db_path)
+
+
+class ContributorEnrollIn(BaseModel):
+    display_name: str = Field(min_length=2, max_length=80)
+    consent_version: str = Field(min_length=3, max_length=40)
+    terms_accepted: bool
+    resources: dict = Field(default_factory=dict)
+
+
+class ContributorHeartbeatIn(BaseModel):
+    cpu_percent: float = Field(default=0, ge=0, le=100)
+    ram_used_mb: int = Field(default=0, ge=0, le=1048576)
+    paused: bool = False
+
+
+@app.get("/api/platform/capabilities")
+def platform_capabilities():
+    return {"items": platform_registry.capabilities(),
+            "note": "Statuses reflect tracked implementation, not deployment."}
+
+
+@app.get("/api/platform/compute/status")
+def compute_status():
+    return platform_registry.summary()
+
+
+@app.post("/api/platform/compute/enroll")
+def compute_enroll(payload: ContributorEnrollIn):
+    guard_mutation()
+    if not payload.terms_accepted:
+        raise HTTPException(400, "explicit contributor consent is required")
+    if payload.consent_version != "ghostcorp-compute-v1":
+        raise HTTPException(400, "please review the current contributor terms")
+    try:
+        result = platform_registry.enroll(payload.display_name, payload.consent_version,
+                                          payload.resources)
+        store.log("contributor", "compute_enrollment_pending", result["node_id"])
+        return result
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(422, "invalid resource declaration") from exc
+
+
+@app.post("/api/platform/compute/{node_id}/approve",
+          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def compute_approve(node_id: str):
+    try:
+        result = platform_registry.approve(node_id)
+        store.log("federation_admin", "compute_contributor_approved", node_id)
+        return result
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.post("/api/platform/compute/{node_id}/revoke",
+          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def compute_revoke(node_id: str):
+    try:
+        result = platform_registry.revoke(node_id)
+        store.log("federation_admin", "compute_contributor_revoked", node_id)
+        return result
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@app.get("/api/platform/compute/nodes",
+          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def compute_nodes():
+    return {"items": platform_registry.list_nodes()}
+
+
+def require_compute_node(authorization: str = Header(default="")):
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(401, "compute node bearer token required")
+    node = platform_registry.authenticate(token)
+    if not node:
+        raise HTTPException(403, "invalid, revoked or inactive compute node")
+    return node
+
+
+@app.post("/api/platform/compute/heartbeat")
+def compute_heartbeat(payload: ContributorHeartbeatIn,
+                      node: dict = __import__("fastapi").Depends(require_compute_node)):
+    try:
+        return platform_registry.heartbeat(node["node_id"], payload.model_dump())
+    except LookupError as exc:
+        raise HTTPException(403, str(exc)) from exc
