@@ -1,60 +1,94 @@
-# GhostCorp Startup Model Fleet
+# GhostCorp Self-Provisioning AI Model Runtime
 
-**Status:** startup architecture requirement; not yet implemented or running.
+**Status:** clarified target architecture; not yet implemented, deployed or running.
 
-## Product requirement
+## What the owner wants
 
-When the GhostCorp virtual world starts, it should automatically initialize its free/open-source AI model ecosystem. The target is to discover and manage thousands of model options over time, with a useful subset ready for work immediately. The system must not falsely claim that thousands of models are loaded or running when they are only catalogued.
+The owner should sign in to the private GhostCorp website and the virtual world should automatically discover, configure and use suitable AI models—such as Llama-family models—without requiring the owner to install runtimes, manage model files, run Termux, maintain a PC, or manually provision servers.
 
-## Startup sequence
+GitHub is the source-code and release home. ghostcorpnet.com is the user-facing entry point. Neither GitHub Pages nor a static website is a general-purpose GPU server. A private website login authenticates the owner; it does not itself supply compute, storage, model licenses or inference quota.
 
-1. Load the signed/versioned model catalogue and approved provider registry.
-2. Check host CPU, RAM, GPU/VRAM, disk, network, runtime versions and current budget.
-3. Discover available local model runtimes and free provider endpoints. Verify license, provenance, model format, supported hardware, context limits, quota and terms before enabling a model.
-4. Build a capability index (coding, reasoning, summarization, embeddings, vision, speech, classification, translation, safety checks, etc.).
-5. Run lightweight health and capability tests; quarantine models that fail validation.
-6. Start a small, resource-bounded warm pool for essential services. Keep other models registered but dormant.
-7. Route each task to the smallest suitable approved model; use fallback models only when available and allowed.
-8. Scale workers gradually based on queue demand and resource headroom. Apply backpressure and stop safely when limits are reached.
-9. Publish honest startup status: discovered, validated, available, warming, active, failed, and dormant counts, with timestamps and source/license details.
+## Required operating model
 
-## Thousands of models: correct interpretation
+GhostCorp must be self-provisioning within the compute it is actually authorized and able to use:
 
-"Thousands" is a catalogue and orchestration target, not a requirement to load thousands of large model weights into RAM or run thousands of inference servers simultaneously. Many model entries may be alternate checkpoints, quantizations, specialist models or provider-hosted endpoints. Model weights may be downloaded only when needed and only if storage, license and budget policies permit. Concurrent inference is separately capped by measured capacity and free quotas.
+1. The private owner session starts the world and requests a backend startup check.
+2. A server-side orchestrator checks which approved inference runtimes and compute providers are already configured and available.
+3. It discovers compatible open-weight models (including Llama-family options where their licenses and provider terms permit use), checks hardware/runtime requirements and selects the best eligible models.
+4. It prepares models on an authorized runtime, or connects to an approved hosted inference endpoint. Model downloads and startup happen server-side where possible—not in the browser.
+5. It starts a small shared worker pool, health-checks it and routes agent tasks to the appropriate model.
+6. It continues discovery and warm-up in the background while the VR world opens.
+7. It shows the owner truthful statuses: discovered, compatible, downloaded, loaded, serving, unavailable, or waiting for capacity.
 
-No assumption of unlimited free hosted inference. Public model downloads, provider endpoints and free tiers can change, rate-limit, require accounts, or impose usage terms. Paid spend remains USD $0 by default; do not silently subscribe, upgrade, or incur charges. If no eligible free capacity is available, queue or defer work.
+The owner should not have to perform routine model setup. Any unavoidable first-time provider authorization, account verification, terms acceptance, or resource permission must be shown clearly and cannot be bypassed by an agent.
 
-## Safety and supply-chain controls
+## Critical compute constraint
 
-- Maintain an allowlist of registries and sources; record exact model ID, revision/hash, license, source and retrieval time.
-- Verify artifact hashes where available; scan downloaded files and dependencies; isolate model-serving processes.
-- Do not run arbitrary model repository code, custom extensions, tools or remote code by default.
-- Keep inference workers sandboxed with restricted filesystem, network egress and tool permissions.
-- Never pass owner secrets, payment credentials, private customer data or unrestricted production access to a model.
-- Treat model output as untrusted; require policy checks and human approval for high-impact external actions.
-- Provide per-model, per-agent, per-division and global resource ceilings, kill switches and audit events.
+A model must execute somewhere. The browser can run some small quantized models on the owner's current device using WebGPU/WebAssembly where supported, but that consumes the device's battery, memory and processing power, depends on browser/headset compatibility, and is not a shared always-on backend. This is an optional fallback, not the primary architecture.
 
-## Scaling design
+A GitHub repository stores code and model manifests; GitHub Pages serves static files. GitHub Actions are temporary automation jobs, not a permanent inference host. A static website cannot silently turn itself into a Llama server. If the owner has no spare device or existing server, GhostCorp needs an authorized hosted compute provider or a genuinely available free inference service.
 
-Use a model registry, capability router, worker pool, download/cache manager, health monitor, quota tracker and scheduler. Prefer shared inference servers and batching where compatible. Separate model metadata from model weights. Use quantized variants only when evaluation shows acceptable quality. Evict cold weights using a safe LRU/priority policy; preserve pinned critical models. Avoid duplicating identical weights across workers when sharing is supported.
+Free hosted capacity is limited, can change, and may require an account, verified access, rate limits or usage terms. There is no honest way to promise thousands of models running continuously for free without actual compute capacity. Do not imply that the website or GitHub supplies this automatically.
 
-Startup is staged and asynchronous. The world UI can open while model discovery and warming continue. It must display partial readiness and never block the whole VR world waiting for every model.
+## Free-first provider strategy
 
-## Metrics
+- Default paid spend remains **USD $0**. Never silently upgrade, subscribe, purchase GPU time, or use a paid fallback.
+- Prefer open-weight models with compatible licenses and provider-supported free inference where available.
+- Use provider-hosted inference when it is the only compute available and the provider's current free quota and terms permit it.
+- Keep provider adapters modular so providers can be added or removed without changing the VR client.
+- Store provider credentials only as server-side deployment secrets. Never put them in Git, website JavaScript, browser storage, VR assets, model prompts or public logs.
+- Use the owner sign-in to authorize access to the private control panel; use separate server-side provider credentials and narrowly scoped service identities for inference.
+- If no authorized free compute is available, mark the runtime as waiting for capacity and queue work. Do not pretend a model is active.
 
-Track model catalogue size, validated model count, warm/active worker count, queue depth, task latency, success/error rate, tokens per task, CPU/RAM/VRAM/disk, network transfer, cache hit rate, quota remaining and actual spend. Distinguish model records from model processes, active workers and concurrent inference sessions.
+## Thousands of models vs. running models
+
+GhostCorp may maintain a catalogue of thousands of compatible model entries and model variants. It should not attempt to download or load all of them at startup. It should select and warm a small useful set based on capability, license, availability, latency and resource limits. Other models remain discoverable and dormant until needed.
+
+Report these counts separately:
+- catalogued model entries;
+- license/provenance validated;
+- compatible with configured runtime;
+- downloaded/cached;
+- loaded in memory;
+- actively serving requests;
+- currently unavailable or waiting for quota.
+
+A catalogue entry is not a running model. A downloaded model is not necessarily loaded. A loaded model is not necessarily serving requests.
+
+## Runtime architecture
+
+- **Private owner authentication:** verified sign-in and short-lived sessions; no shared admin token in the frontend.
+- **Server-side orchestrator:** startup, provider discovery, model selection, lifecycle and health status.
+- **Model registry:** IDs, revisions, hashes, licenses, sources, capabilities and hardware requirements.
+- **Provider adapters:** local runtime and approved hosted inference interfaces, disabled until explicitly configured.
+- **Worker pool:** bounded shared workers, leases, queues, retries and concurrency limits.
+- **Model cache:** server-side storage with quotas, integrity checks and eviction policy.
+- **Capability router:** selects a suitable approved model for each task and tracks latency, quality and quota.
+- **VR status bridge:** returns scoped readiness and activity data through the authenticated owner session; never exposes secrets.
+
+## Safety and operational controls
+
+Verify model provenance, revision and license. Do not execute arbitrary repository code or remote custom model code by default. Scan dependencies and isolate model-serving processes. Restrict network egress and tool access. Treat all model outputs and retrieved content as untrusted. Apply per-model, per-agent, per-division and global resource limits, audit events, owner pause/revoke controls and emergency shutdown.
+
+Models must not receive owner credentials, wallet secrets, payment details or unrestricted production permissions. High-impact business actions remain behind explicit owner approvals.
+
+## Startup experience
+
+The virtual world should not wait for every model. It opens its environment, displays the runtime initialization state, and progressively makes available the approved models as they become ready. If compute is unavailable, the world still opens in a limited/offline mode and clearly reports that AI inference is not currently available.
 
 ## Acceptance tests
 
-- Cold start works with no network and correctly reports cached models only.
-- Startup succeeds when some registries are unavailable.
-- A model with an incompatible license, invalid hash, unsafe runtime requirement or failed health test is not enabled.
-- Resource limits prevent overcommit and the world remains responsive.
-- Free quota exhaustion queues work without switching to paid service.
-- Repeated startup is idempotent and does not duplicate workers.
-- Owner pause/revoke disables affected workers and credentials.
-- Dashboard counts distinguish catalogued, validated, warmed and actively serving models.
+- The owner can sign in without exposing provider secrets to the browser.
+- Startup detects configured providers and reports unavailable providers without crashing the world.
+- A permitted Llama-family model can be selected and started on a configured runtime.
+- No model is marked serving until a real inference health check succeeds.
+- No paid provider is called when the spend cap is zero.
+- No provider credentials means no false claim of hosted inference; the UI shows setup/capacity required.
+- The VR world opens even while model discovery is pending or unavailable.
+- Model counts distinguish catalogue, compatible, downloaded, loaded and serving.
+- Repeated startup does not create duplicate workers or incur unexpected downloads.
+- Owner pause/revoke disables the affected runtime and credentials.
 
 ## Current reality
 
-GhostCorp currently has no implemented model registry or startup fleet manager. Its existing local-model gateway is guarded and disabled by default. This document is a requirement and design, not evidence that thousands of models have been downloaded, initialized, or made available.
+The existing GhostCorp backend has a guarded local-model gateway that is disabled by default, a basic agent world-state foundation and documentation for private owner sign-in. It does not yet have production owner authentication, a deployed orchestrator, a configured hosted inference provider, a model registry, a running Llama runtime, always-on compute or a deployed VR-to-backend session bridge. This specification describes the desired behavior; none of those runtime capabilities should be represented as already working.
