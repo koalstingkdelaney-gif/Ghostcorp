@@ -77,7 +77,10 @@ autonomous or revenue-generating until those capabilities are proven end-to-end.
 
 - [`docs/FOUNDATION-ARCHITECTURE.md`](docs/FOUNDATION-ARCHITECTURE.md): expanded system foundation, execution/data/security planes, resource isolation and delivery gates.
 
-- [`docs/SANDBOXING.md`](docs/SANDBOXING.md): fixed-workload Docker sandbox controls, setup requirements and remaining hardening.\n- [`docs/WORKLOAD-GOVERNANCE.md`](docs/WORKLOAD-GOVERNANCE.md): signed workload manifests, fixed profiles, per-agent quotas and artifact path policy.
+- [`docs/SANDBOXING.md`](docs/SANDBOXING.md): fixed-workload Docker sandbox controls, setup requirements and remaining hardening.
+- [`docs/WORKLOAD-GOVERNANCE.md`](docs/WORKLOAD-GOVERNANCE.md): signed workload manifests, fixed profiles, per-agent quotas and artifact path policy.
+- [`docs/ARTIFACT-QUARANTINE.md`](docs/ARTIFACT-QUARANTINE.md): private, bounded, non-executing artifact intake and inspection.
+- [`docs/ENGINEERING-BACKLOG.md`](docs/ENGINEERING-BACKLOG.md): prioritized engineering backlog with dependencies, acceptance criteria and security checks.
 
 
 ### Agent workspaces
