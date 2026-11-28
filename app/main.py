@@ -4,7 +4,7 @@ Outbound communications are disabled at this layer too: there is no send
 endpoint that can fire. Proposals are drafts for the existing gated
 pipelines. Calling/SMS endpoints exist only to return the disabled state.
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends
 from pydantic import BaseModel, Field
 
 from . import __version__
@@ -22,6 +22,22 @@ settings = load_settings()
 store = Store(settings.db_path)
 governor = SpendGovernor(settings.spend_cap_usd)
 comms = DisabledCommsProvider(settings.calling_enabled, settings.sms_enabled)
+
+# One owner-admin gate protects private business records and mutations.
+# The secret is supplied only by the deployment environment, never Git.
+import os
+import secrets as _secrets
+
+FEDERATION_ADMIN_TOKEN = os.environ.get("FEDERATION_ADMIN_TOKEN", "")
+
+
+def require_federation_admin(x_federation_admin: str = Header(default="")):
+    if not FEDERATION_ADMIN_TOKEN:
+        raise HTTPException(503, "owner admin access is locked: FEDERATION_ADMIN_TOKEN is not configured")
+    if not _secrets.compare_digest(x_federation_admin, FEDERATION_ADMIN_TOKEN):
+        raise HTTPException(403, "owner admin authorization required")
+    return True
+
 
 app = FastAPI(title="GhostCorp Web Agency", version=__version__)
 
@@ -69,7 +85,7 @@ def packages():
     return PACKAGES
 
 
-@app.post("/api/leads")
+@app.post("/api/leads", dependencies=[Depends(require_federation_admin)])
 def add_lead(lead: LeadIn):
     guard_mutation()
     data = lead.model_dump()
@@ -80,7 +96,7 @@ def add_lead(lead: LeadIn):
     return {"outcome": outcome, "score": score, "reasons": reasons}
 
 
-@app.post("/api/discovery/import")
+@app.post("/api/discovery/import", dependencies=[Depends(require_federation_admin)])
 def import_discovery_results(payload: DiscoveryImportIn):
     """Import structured results from an approved provider adapter; no scraping."""
     guard_mutation()
@@ -90,12 +106,12 @@ def import_discovery_results(payload: DiscoveryImportIn):
         raise HTTPException(422, str(exc)) from exc
 
 
-@app.get("/api/leads")
+@app.get("/api/leads", dependencies=[Depends(require_federation_admin)])
 def list_leads(limit: int = 200):
     return store.leads(max(1, min(limit, 5000)))
 
 
-@app.post("/api/leads/{lead_id}/audit")
+@app.post("/api/leads/{lead_id}/audit", dependencies=[Depends(require_federation_admin)])
 def audit_lead(lead_id: int):
     guard_mutation()
     lead = store.lead(lead_id)
@@ -106,7 +122,7 @@ def audit_lead(lead_id: int):
     return audit
 
 
-@app.post("/api/leads/{lead_id}/proposal")
+@app.post("/api/leads/{lead_id}/proposal", dependencies=[Depends(require_federation_admin)])
 def draft_proposal(lead_id: int):
     guard_mutation()
     lead = store.lead(lead_id)
@@ -120,13 +136,13 @@ def draft_proposal(lead_id: int):
     return {"proposal_id": pid, **prop}
 
 
-@app.post("/api/jobs/run")
+@app.post("/api/jobs/run", dependencies=[Depends(require_federation_admin)])
 def jobs_run():
     guard_mutation()
     return run_pending(store)
 
 
-@app.get("/api/dashboard/summary")
+@app.get("/api/dashboard/summary", dependencies=[Depends(require_federation_admin)])
 def dashboard():
     return store.summary()
 
@@ -147,23 +163,11 @@ def sms():
         raise HTTPException(403, str(e))
 
 
-# Identity-minimal federation registry. Provisioning requires a separate
-# admin token supplied by the runtime environment; no personal identity data.
-import os
-import secrets as _secrets
-from fastapi import Header
+# Identity-minimal federation registry. The same owner-admin gate protects
+# business records, world controls, provisioning and other private operations.
 from .federation import FederationRegistry
 
 federation = FederationRegistry(settings.db_path)
-FEDERATION_ADMIN_TOKEN = os.environ.get("FEDERATION_ADMIN_TOKEN", "")
-
-
-def require_federation_admin(x_federation_admin: str = Header(default="")):
-    if not FEDERATION_ADMIN_TOKEN:
-        raise HTTPException(503, "federation provisioning is locked: admin token is not configured")
-    if not _secrets.compare_digest(x_federation_admin, FEDERATION_ADMIN_TOKEN):
-        raise HTTPException(403, "federation admin authorization required")
-    return True
 
 
 class DivisionIn(BaseModel):
