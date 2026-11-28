@@ -6,23 +6,24 @@ from app.agent_runtime import AgentRuntime
 from app.federation import FederationRegistry
 
 
-def setup_owner_worker(monkeypatch):
+def setup_owner_worker(monkeypatch, tmp_path):
     monkeypatch.setattr(main, "FEDERATION_ADMIN_TOKEN", "owner-worker-secret")
     federation = FederationRegistry(":memory:")
     federation.create_division("research-lab", "Research Lab", "")
     created = federation.create_agent("research-lab", "researcher")
-    lifecycle = AgentLifecycle(":memory:")
+    shared_db = str(tmp_path / "owner-worker.sqlite")
+    lifecycle = AgentLifecycle(shared_db)
     lifecycle.register(created["machine_id"])
     lifecycle.transition(created["machine_id"], "WORKING", "Research customer problems")
-    runtime = AgentRuntime(":memory:")
+    runtime = AgentRuntime(shared_db)
     monkeypatch.setattr(main, "federation", federation)
     monkeypatch.setattr(main, "agent_lifecycle", lifecycle)
     monkeypatch.setattr(main, "agent_runtime", runtime)
     return created["machine_id"], lifecycle, runtime
 
 
-def test_owner_local_worker_claims_and_completes_task(monkeypatch):
-    machine_id, lifecycle, runtime = setup_owner_worker(monkeypatch)
+def test_owner_local_worker_claims_and_completes_task(monkeypatch, tmp_path):
+    machine_id, lifecycle, runtime = setup_owner_worker(monkeypatch, tmp_path)
     runtime.enqueue("owner-worker-task-001", "research-lab", "researcher",
                     "research_summary", {"privacy_class": "internal", "prompt": "Summarize"})
     client = TestClient(main.app)
@@ -42,8 +43,8 @@ def test_owner_local_worker_claims_and_completes_task(monkeypatch):
     assert completed.json()["outcome"] == "completed"
 
 
-def test_owner_local_worker_cannot_claim_while_agent_sleeps(monkeypatch):
-    machine_id, lifecycle, runtime = setup_owner_worker(monkeypatch)
+def test_owner_local_worker_cannot_claim_while_agent_sleeps(monkeypatch, tmp_path):
+    machine_id, lifecycle, runtime = setup_owner_worker(monkeypatch, tmp_path)
     lifecycle.transition(machine_id, "SLEEPING", reason="owner paused local worker")
     runtime.enqueue("owner-worker-task-002", "research-lab", "researcher",
                     "research_summary", {"privacy_class": "internal", "prompt": "Summarize"})
