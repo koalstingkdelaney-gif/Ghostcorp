@@ -305,13 +305,14 @@ freshly rerun or independently reverified in this update.
   local AI chat, customer request and approval pages.
 
 ### Verification
-- GitHub Actions run `46098281029` on backend commit
-  `d81d400108d9b04f7a28e1dd326a87f2f385aaba` passed **147 tests** and built
+- GitHub Actions run `46098302612` on backend commit
+  `b4ba5cf48a84c82b224dc6d1eac5d8a9dbb87771` passed **147 tests** and built
   the backend Docker image successfully. One non-fatal Starlette/httpx
   TestClient deprecation warning remains.
 - The VR/static-site JavaScript modules were syntax-checked in this update.
-  GitHub Pages build/deployment for the static site must be checked against
-  its latest commit separately.
+  GitHub Pages build/deployment run `46098386354` completed successfully on
+  site commit `49e8a63c8a85488dc9d3851715d6a1ce6ee171b7`. This verifies the
+  static Pages build, not Quest 3 hardware operation or backend connectivity.
 - No Quest 3 hardware run, WebGPU model initialization, OAuth login, live
   Gumroad Ping, production backend deployment, persistent-volume restore,
   or customer payment/delivery has been performed.
