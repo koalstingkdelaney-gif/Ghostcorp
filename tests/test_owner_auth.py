@@ -134,7 +134,7 @@ def test_github_oauth_rejects_unverified_owner_email(monkeypatch):
 def test_owner_logout_revokes_server_side_session(monkeypatch):
     configure_owner(monkeypatch)
     token, csrf = make_session()
-    client = TestClient(main.app, base_url="https://testserver")
+    client = TestClient(main.app, base_url="https://testserver", follow_redirects=False)
     response = client.post(
         "/auth/logout",
         headers={
@@ -143,5 +143,5 @@ def test_owner_logout_revokes_server_side_session(monkeypatch):
             "X-CSRF-Token": csrf,
         },
     )
-    assert response.status_code == 200  # TestClient follows the 303 redirect.
+    assert response.status_code == 303
     assert owner_auth.read_session(token) is None
