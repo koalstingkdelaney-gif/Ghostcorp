@@ -213,6 +213,10 @@ class ServiceCustomerDecisionIn(BaseModel):
     decision: str = Field(pattern=r"^(ACCEPTED|DECLINED)$")
 
 
+class ServiceApprovalPreviewIn(BaseModel):
+    token: str = Field(min_length=20, max_length=200)
+
+
 class ServiceDeliveryIn(BaseModel):
     status: str = Field(pattern=r"^(IN_PROGRESS|DELIVERED)$")
     payment_sale_id: str = Field(min_length=1, max_length=180)
@@ -471,7 +475,7 @@ def issue_website_service_approval(request_id: int):
     guard_mutation()
     try:
         item, token = service_workflow.issue_customer_approval(request_id)
-        approval_url = owner_auth.site_origin() + "/service-approval.html?token=" + token
+        approval_url = owner_auth.site_origin() + "/service-approval.html#token=" + token
         store.log("federation_admin", "website_service_approval_link_issued", str(request_id))
         return {"request_id": request_id, "approval_url": approval_url,
                 "token": token, "expires_at": item["token_expires_at"],
@@ -483,10 +487,10 @@ def issue_website_service_approval(request_id: int):
         raise HTTPException(409, str(exc)) from exc
 
 
-@app.get("/api/public/service-approvals/{token}")
-def get_website_service_approval(token: str):
+@app.post("/api/public/service-approval-preview")
+def get_website_service_approval(payload: ServiceApprovalPreviewIn):
     try:
-        return service_workflow.get_public_approval(token)
+        return service_workflow.get_public_approval(payload.token)
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
 
