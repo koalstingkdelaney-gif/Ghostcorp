@@ -8,7 +8,7 @@ from app.service_workflow import WebsiteServiceWorkflow
 def test_website_audit_to_customer_approved_paid_delivery_api(monkeypatch):
     monkeypatch.setattr(main, "FEDERATION_ADMIN_TOKEN", "service-owner-secret")
     monkeypatch.setenv("PUBLIC_FEEDBACK_RATE_SECRET", "service-rate-" + "t" * 40)
-    monkeypatch.setenv("GUMROAD_SERVICE_PACKAGE_MAP", "AI Website=ihqce")
+    monkeypatch.setenv("GUMROAD_SERVICE_PACKAGE_MAP", "AI Website=ihqce:49900:USD")
     monkeypatch.setattr(main, "service_workflow", WebsiteServiceWorkflow(":memory:"))
     ledger = GumroadSales(":memory:")
     ledger.conn.execute(
