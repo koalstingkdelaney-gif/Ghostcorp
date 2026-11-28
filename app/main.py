@@ -395,6 +395,77 @@ def world_learn(payload: WorldLearningIn,
         raise HTTPException(422, str(exc)) from exc
 
 
+
+# Persistent agent lifecycle: initialize, work, sleep, dream, wake.
+from .agent_lifecycle import AgentLifecycle
+agent_lifecycle = AgentLifecycle(settings.db_path)
+
+
+class LifecycleTransitionIn(BaseModel):
+    target: str = Field(min_length=3, max_length=20)
+    goal: str = Field(default="", max_length=200)
+    reason: str = Field(default="", max_length=300)
+
+
+class DreamArtifactIn(BaseModel):
+    artifact_type: str = Field(min_length=2, max_length=40)
+    title: str = Field(min_length=1, max_length=100)
+    summary: str = Field(min_length=1, max_length=1000)
+    artifact: dict = Field(default_factory=dict)
+
+
+@app.get("/api/lifecycle/status",
+         dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def lifecycle_status():
+    agent_world.sync_registry(federation)
+    for item in agent_world.snapshot()["agents"]:
+        agent_lifecycle.register(item["machine_id"])
+    return agent_lifecycle.snapshot()
+
+
+@app.get("/api/lifecycle/me")
+def lifecycle_me(agent: dict = __import__("fastapi").Depends(require_agent)):
+    agent_lifecycle.register(agent["machine_id"])
+    return agent_lifecycle.get(agent["machine_id"])
+
+
+@app.post("/api/lifecycle/transition")
+def lifecycle_transition(payload: LifecycleTransitionIn,
+                         agent: dict = __import__("fastapi").Depends(require_agent)):
+    guard_mutation()
+    agent_lifecycle.register(agent["machine_id"])
+    try:
+        result = agent_lifecycle.transition(
+            agent["machine_id"], payload.target.upper(), payload.goal, payload.reason)
+        store.log(agent["machine_id"], "lifecycle_transition", result["mode"])
+        return result
+    except (ValueError, LookupError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.post("/api/lifecycle/dream-artifacts")
+def lifecycle_dream_artifact(payload: DreamArtifactIn,
+                              agent: dict = __import__("fastapi").Depends(require_agent)):
+    guard_mutation()
+    agent_lifecycle.register(agent["machine_id"])
+    try:
+        result = agent_lifecycle.add_dream_artifact(
+            agent["machine_id"], agent["division_slug"], payload.artifact_type,
+            payload.title, payload.summary, payload.artifact)
+        store.log(agent["machine_id"], "dream_artifact_submitted", str(result["id"]))
+        return result
+    except (ValueError, LookupError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.get("/api/lifecycle/dream-artifacts",
+         dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def lifecycle_dream_artifacts(status: str = "AWAITING_REVIEW", limit: int = 100):
+    if status not in {"AWAITING_REVIEW", "APPROVED", "REJECTED"}:
+        raise HTTPException(422, "invalid artifact review status")
+    return {"items": agent_lifecycle.artifacts(status, limit)}
+
+
 # Platform expansion: capability tracking and opt-in community compute.
 # Enrollment is public but creates PENDING_REVIEW records only. No remote code
 # execution is exposed by this API. Approval issues a scoped node credential.
