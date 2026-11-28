@@ -552,6 +552,11 @@ class OwnerAgentIn(BaseModel):
     machine_id: str = Field(min_length=8, max_length=80)
 
 
+class OwnerAgentProvisionIn(BaseModel):
+    division_slug: str = Field(min_length=3, max_length=40)
+    role: str = Field(min_length=1, max_length=30)
+
+
 class OwnerLifecycleTransitionIn(BaseModel):
     target: str = Field(min_length=3, max_length=20)
     goal: str = Field(default="", max_length=200)
@@ -562,6 +567,24 @@ class OwnerTaskCompleteIn(BaseModel):
     machine_id: str = Field(min_length=8, max_length=80)
     lease_token: str = Field(min_length=20, max_length=200)
     result: dict = Field(default_factory=dict)
+
+
+@app.post("/api/owner/agents/provision",
+          dependencies=[Depends(require_federation_admin)])
+def owner_provision_agent(payload: OwnerAgentProvisionIn):
+    guard_mutation()
+    try:
+        result = federation.create_agent(payload.division_slug, payload.role)
+        agent_lifecycle.register(result["machine_id"])
+        # The machine token is intentionally discarded: this browser worker
+        # uses the owner session, not a long-lived token in headset storage.
+        store.log("federation_admin", "owner_agent_provisioned",
+                  result["machine_id"] + ":" + payload.role)
+        return {"machine_id": result["machine_id"], "division": payload.division_slug,
+                "role": payload.role, "status": "INITIALIZING",
+                "credential_returned": False}
+    except (ValueError, LookupError) as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 @app.get("/api/owner/agents",
