@@ -3,7 +3,7 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=8000 \
-    AGENCY_DB_PATH=/var/lib/ghostcorp/agency.db \
+    AGENCY_DB_PATH=/data/agency.db \
     AGENCY_SPEND_CAP_USD=0 \
     PAYMENTS_MODE=disabled \
     CALLING_ENABLED=0 \
@@ -19,8 +19,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY scripts ./scripts
 
-RUN mkdir -p /var/lib/ghostcorp && chown -R ghostcorp:ghostcorp /srv/ghostcorp /var/lib/ghostcorp
+RUN mkdir -p /data && chown -R ghostcorp:ghostcorp /srv/ghostcorp /data
 USER ghostcorp
 
+VOLUME ["/data"]
 EXPOSE 8000
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
