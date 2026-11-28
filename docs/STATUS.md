@@ -310,9 +310,10 @@ freshly rerun or independently reverified in this update.
   the backend Docker image successfully. One non-fatal Starlette/httpx
   TestClient deprecation warning remains.
 - The VR/static-site JavaScript modules were syntax-checked in this update.
-  GitHub Pages build/deployment run `46098386354` completed successfully on
-  site commit `49e8a63c8a85488dc9d3851715d6a1ce6ee171b7`. This verifies the
-  static Pages build, not Quest 3 hardware operation or backend connectivity.
+  GitHub Pages build/deployment run `46098541903` completed successfully on
+  site commit `562f5914a9e03acadeae79a428ece92205e70487`, including the local
+  dream-session controls. This verifies the static Pages build, not Quest 3
+  hardware operation or backend connectivity.
 - No Quest 3 hardware run, WebGPU model initialization, OAuth login, live
   Gumroad Ping, production backend deployment, persistent-volume restore,
   or customer payment/delivery has been performed.
