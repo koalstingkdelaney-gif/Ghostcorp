@@ -4,7 +4,8 @@ Outbound communications are disabled at this layer too: there is no send
 endpoint that can fire. Proposals are drafts for the existing gated
 pipelines. Calling/SMS endpoints exist only to return the disabled state.
 """
-from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi import FastAPI, HTTPException, Header, Depends, Cookie, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 from . import __version__
@@ -31,15 +32,105 @@ import secrets as _secrets
 FEDERATION_ADMIN_TOKEN = os.environ.get("FEDERATION_ADMIN_TOKEN", "")
 
 
-def require_federation_admin(x_federation_admin: str = Header(default="")):
-    if not FEDERATION_ADMIN_TOKEN:
-        raise HTTPException(503, "owner admin access is locked: FEDERATION_ADMIN_TOKEN is not configured")
-    if not _secrets.compare_digest(x_federation_admin, FEDERATION_ADMIN_TOKEN):
+from . import owner_auth
+
+
+def require_federation_admin(
+    request: Request,
+    x_federation_admin: str = Header(default=""),
+    ghostcorp_owner_session: str = Cookie(default="", alias=owner_auth.SESSION_COOKIE),
+    x_csrf_token: str = Header(default=""),
+):
+    # Machine/admin API clients may use the deployment-only bearer-like header.
+    if FEDERATION_ADMIN_TOKEN and _secrets.compare_digest(
+        x_federation_admin, FEDERATION_ADMIN_TOKEN
+    ):
+        return True
+
+    # Browser owner sessions are accepted only after GitHub OAuth identity
+    # verification and require CSRF + exact same-origin checks on mutations.
+    session = owner_auth.read_session(ghostcorp_owner_session)
+    if not session:
+        if not FEDERATION_ADMIN_TOKEN:
+            raise HTTPException(503, "owner admin access is locked: sign-in is not configured")
         raise HTTPException(403, "owner admin authorization required")
+    if request.method not in {"GET", "HEAD", "OPTIONS"}:
+        origin = request.headers.get("origin", "").rstrip("/")
+        if not origin or not _secrets.compare_digest(origin, owner_auth.site_origin()):
+            raise HTTPException(403, "same-origin request required")
+        if not _secrets.compare_digest(x_csrf_token, str(session["csrf"])):
+            raise HTTPException(403, "CSRF validation failed")
     return True
 
 
 app = FastAPI(title="GhostCorp Web Agency", version=__version__)
+
+
+@app.get("/auth/status")
+def owner_auth_status():
+    return {"configured": owner_auth.configured(), "provider": "github_oauth",
+            "session_hours": 8, "mode": "OWNER_ALLOWLIST_REQUIRED"}
+
+
+@app.get("/auth/github/start")
+def owner_github_start():
+    try:
+        url, state_cookie = owner_auth.issue_state()
+    except owner_auth.OwnerAuthUnavailable as exc:
+        raise HTTPException(503, str(exc)) from exc
+    response = RedirectResponse(url, status_code=302)
+    response.set_cookie(owner_auth.STATE_COOKIE if hasattr(owner_auth, "STATE_COOKIE") else "ghostcorp_oauth_state",
+                        state_cookie, max_age=600, httponly=True, secure=True,
+                        samesite="lax", path="/")
+    return response
+
+
+@app.get("/auth/github/callback")
+def owner_github_callback(code: str = "", state: str = "",
+                          ghostcorp_oauth_state: str = Cookie(default="")):
+    try:
+        session, csrf = owner_auth.complete_login(code, state, ghostcorp_oauth_state)
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except owner_auth.OwnerAuthUnavailable as exc:
+        raise HTTPException(503, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, "GitHub sign-in could not be completed") from exc
+    response = RedirectResponse(owner_auth.site_origin() + "/vr/", status_code=303)
+    response.delete_cookie("ghostcorp_oauth_state", path="/")
+    response.set_cookie(owner_auth.SESSION_COOKIE, session, max_age=8 * 60 * 60,
+                        httponly=True, secure=True, samesite="lax", path="/")
+    response.set_cookie(owner_auth.CSRF_COOKIE, csrf, max_age=8 * 60 * 60,
+                        httponly=False, secure=True, samesite="lax", path="/")
+    return response
+
+
+@app.get("/auth/me")
+def owner_auth_me(ghostcorp_owner_session: str = Cookie(default="", alias=owner_auth.SESSION_COOKIE)):
+    session = owner_auth.read_session(ghostcorp_owner_session)
+    if not session:
+        return {"authenticated": False}
+    return {"authenticated": True, "owner": session["sub"], "csrf_token": session["csrf"],
+            "expires_at": session["exp"]}
+
+
+@app.post("/auth/logout")
+def owner_auth_logout(request: Request,
+                      ghostcorp_owner_session: str = Cookie(default="", alias=owner_auth.SESSION_COOKIE),
+                      x_csrf_token: str = Header(default="")):
+    session = owner_auth.read_session(ghostcorp_owner_session)
+    if session:
+        origin = request.headers.get("origin", "").rstrip("/")
+        if not origin or not _secrets.compare_digest(origin, owner_auth.site_origin()):
+            raise HTTPException(403, "same-origin request required")
+        if not _secrets.compare_digest(x_csrf_token, str(session["csrf"])):
+            raise HTTPException(403, "CSRF validation failed")
+    response = RedirectResponse(owner_auth.site_origin() + "/", status_code=303)
+    response.delete_cookie(owner_auth.SESSION_COOKIE, path="/")
+    response.delete_cookie(owner_auth.CSRF_COOKIE, path="/")
+    return response
 
 
 def guard_mutation():
