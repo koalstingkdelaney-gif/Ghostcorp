@@ -1077,3 +1077,31 @@ def artifact_quarantine_ingest(payload: ArtifactQuarantineIn):
          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
 def artifact_quarantine_list(limit: int = 100):
     return {"items": artifact_quarantine.list(limit)}
+
+
+@app.get("/api/owner/action-center",
+         dependencies=[Depends(require_federation_admin)])
+def owner_action_center():
+    """One private, evidence-oriented view of items requiring owner attention."""
+    agent_world.sync_registry(federation)
+    return {
+        "mode": "OWNER_PRIVATE_ACTION_CENTER",
+        "health": {"paused": settings.paused, "spend_cap_usd": governor.cap_usd,
+                   "spent_usd": governor.spent_usd,
+                   "payments_mode": settings.payments_mode},
+        "queue": agent_runtime.status(),
+        "lifecycle": agent_lifecycle.snapshot(),
+        "world": agent_world.snapshot(),
+        "customer_problems": {"new": customer_feedback.list("NEW", 50),
+                              "roadmap": customer_feedback.list("ROADMAP", 50)},
+        "product_drafts": {"items": product_pipeline.list("ALL", 100)},
+        "dream_artifacts": {"items": agent_lifecycle.artifacts("AWAITING_REVIEW", 100)},
+        "artifacts": artifact_quarantine.list(100),
+        "capability_status": {
+            "owner_email_sign_in": owner_auth.configured(),
+            "live_workers": False,
+            "local_model_backend": "DISABLED_UNLESS_CONFIGURED",
+            "gumroad_live_verification": False,
+            "production_deployment": False,
+        },
+    }
