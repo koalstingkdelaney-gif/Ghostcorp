@@ -4,13 +4,21 @@ Nothing below can be done by an agent. Each step happens in the provider's
 own official dashboard, by the owner. No passwords, codes, keys, or card
 numbers ever go through chat.
 
-## Payments (Stripe) — unlocks charging customers
-1. Owner signs in at stripe.com, completes business/identity verification
-   and payout (bank) details there.
-2. Owner creates the account in **test mode** first; Phase 4 integration is
-   tested against test checkout + signed webhooks before any live charge.
-3. Keys are placed in the deployment's secret store by the owner; the app
-   reads `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` from the environment.
+## Existing Gumroad checkout — no new payment processor
+1. Keep the existing GhostCorp Gumroad storefront and product checkout links.
+   Customers continue to pay through Gumroad's enabled payment methods.
+2. If the owner wants server-side sale tracking, create a Gumroad API token
+   with read-only `view_sales` access in Gumroad's official dashboard.
+3. Configure the Gumroad Ping URL to the deployed backend's secret route,
+   then set `GUMROAD_ACCESS_TOKEN`, `GUMROAD_PING_SECRET`, and the exact
+   `GUMROAD_ALLOWED_PERMALINKS` in the host's private secret store.
+4. For service delivery, set `GUMROAD_SERVICE_PACKAGE_MAP` only after a
+   test sale confirms each service product's exact permalink, raw API price
+   value and currency. Do not assume price units or map an unrelated product.
+5. Gumroad remains responsible for checkout and digital-product delivery.
+   GhostCorp's integration is read-only verification and an internal ledger;
+   it does not change payout settings, move money, refund customers or
+   introduce Stripe as another checkout provider.
 
 ## Voice/SMS (e.g. Twilio) — unlocks calling, only when ALL are true
 1. Owner completes provider onboarding and business/identity verification.
