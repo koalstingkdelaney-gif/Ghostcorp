@@ -106,7 +106,9 @@ class AgentRuntime:
                 "SELECT mode FROM agent_lifecycle WHERE machine_id=?",
                 (agent["machine_id"],)
             ).fetchone()
-            if lifecycle and lifecycle["mode"] != "WORKING":
+            # Missing lifecycle state is not permission: agents must register
+            # and explicitly enter WORKING before claiming business tasks.
+            if not lifecycle or lifecycle["mode"] != "WORKING":
                 return None
         now = int(time.time())
         self.conn.execute("BEGIN IMMEDIATE")
