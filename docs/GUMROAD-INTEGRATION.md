@@ -58,7 +58,9 @@ In Gumroad's advanced settings, configure the Ping URL to the deployed
 backend's HTTPS route, including the secret path. If the static website and
 backend use the same origin, route `/webhooks/gumroad/*` through the reverse
 proxy to FastAPI. If the backend uses a dedicated API host, use that host's
-verified HTTPS URL instead.
+verified HTTPS URL instead. Configure proxy/application access logs to redact
+the secret path segment; rotate the Ping secret if it appears in an exposed
+log or is otherwise disclosed.
 
 ## Customer service delivery gate
 
