@@ -103,6 +103,13 @@ class CustomerFeedback:
                 self.conn.rollback()
             raise
 
+    def get(self, submission_id: int) -> dict | None:
+        row = self.conn.execute(
+            "SELECT * FROM customer_problem_submissions WHERE id=?",
+            (int(submission_id),),
+        ).fetchone()
+        return dict(row) if row else None
+
     def list(self, status: str = "NEW", limit: int = 100) -> list[dict]:
         if status not in {"NEW", "REVIEWED", "ROADMAP", "CLOSED", "ALL"}:
             raise FeedbackError("invalid submission status")
