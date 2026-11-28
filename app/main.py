@@ -336,11 +336,21 @@ class WorldHeartbeatIn(BaseModel):
     activity: str = Field(default="", max_length=80)
 
 
+class WorldLearningIn(BaseModel):
+    event_key: str = Field(min_length=3, max_length=120, pattern=r"^[A-Za-z0-9._:-]+$")
+    change_type: str = Field(min_length=3, max_length=40)
+    title: str = Field(min_length=1, max_length=80)
+    summary: str = Field(min_length=1, max_length=500)
+    config: dict = Field(default_factory=dict)
+
+
 @app.get("/api/world/snapshot",
          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
 def world_snapshot():
     agent_world.sync_registry(federation)
-    return agent_world.snapshot()
+    result = agent_world.snapshot()
+    result["adaptations"] = agent_world.adaptations(200)
+    return result
 
 
 @app.get("/api/world/events",
@@ -356,6 +366,30 @@ def world_heartbeat(payload: WorldHeartbeatIn,
     try:
         result = agent_world.heartbeat(agent["machine_id"], payload.zone, payload.activity)
         store.log(agent["machine_id"], "world_heartbeat", result["zone"] + ":" + result["activity"])
+        return result
+    except (ValueError, LookupError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.get("/api/world/adaptations",
+         dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def world_adaptations(limit: int = 200, zone: str = ""):
+    if zone and not __import__("re").fullmatch(r"[a-z0-9][a-z0-9-]{1,38}[a-z0-9]", zone):
+        raise HTTPException(422, "invalid world zone")
+    return {"items": agent_world.adaptations(limit, zone)}
+
+
+@app.post("/api/world/learn")
+def world_learn(payload: WorldLearningIn,
+                agent: dict = __import__("fastapi").Depends(require_agent)):
+    """Record an authenticated bot learning event as a local-area world adaptation."""
+    guard_mutation()
+    agent_world.sync_registry(federation)
+    try:
+        result = agent_world.record_learning(
+            agent["machine_id"], payload.event_key, payload.change_type,
+            payload.title, payload.summary, payload.config)
+        store.log(agent["machine_id"], "world_learning", result["adaptation"]["zone"] + ":" + payload.change_type)
         return result
     except (ValueError, LookupError) as exc:
         raise HTTPException(422, str(exc)) from exc
