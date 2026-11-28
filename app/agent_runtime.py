@@ -97,6 +97,17 @@ class AgentRuntime:
     @_synchronized
     def claim(self, agent, lease_seconds=300):
         lease_seconds = max(30, min(int(lease_seconds), 3600))
+        # Sleeping agents cannot claim normal business work.
+        has_lifecycle = self.conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='agent_lifecycle'"
+        ).fetchone()
+        if has_lifecycle:
+            lifecycle = self.conn.execute(
+                "SELECT mode FROM agent_lifecycle WHERE machine_id=?",
+                (agent["machine_id"],)
+            ).fetchone()
+            if lifecycle and lifecycle["mode"] != "WORKING":
+                return None
         now = int(time.time())
         self.conn.execute("BEGIN IMMEDIATE")
         try:
