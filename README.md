@@ -82,6 +82,7 @@ autonomous or revenue-generating until those capabilities are proven end-to-end.
 - [`docs/WORKLOAD-GOVERNANCE.md`](docs/WORKLOAD-GOVERNANCE.md): signed workload manifests, fixed profiles, per-agent quotas and artifact path policy.
 - [`docs/ARTIFACT-QUARANTINE.md`](docs/ARTIFACT-QUARANTINE.md): private, bounded, non-executing artifact intake and inspection.
 - [`docs/ENGINEERING-BACKLOG.md`](docs/ENGINEERING-BACKLOG.md): prioritized engineering backlog with dependencies, acceptance criteria and security checks.
+- [`docs/REAL-WORLD-PROBLEM-SOLUTIONS.md`](docs/REAL-WORLD-PROBLEM-SOLUTIONS.md): ranked real-world customer problems, product solutions, implementation status and build order.
 
 
 ### Agent workspaces
