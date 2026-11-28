@@ -1440,6 +1440,12 @@ def owner_action_center():
                               "roadmap": customer_feedback.list("ROADMAP", 50),
                               "reviewed": customer_feedback.list("REVIEWED", 50)},
         "website_service_requests": {"items": service_workflow.list(100)},
+        "commerce": {
+            "verified_sales": gumroad_sales.list(100),
+            "sales_count": len(gumroad_sales.list(300)),
+            "amount_note": "Gumroad API price values remain raw and are not summed or labeled as currency units until provider units are verified.",
+            "integration_configured": gumroad_sales.configured(),
+        },
         "product_drafts": {"items": product_pipeline.list("ALL", 100)},
         "dream_artifacts": {"items": agent_lifecycle.artifacts("AWAITING_REVIEW", 100)},
         "artifacts": artifact_quarantine.list(100),
