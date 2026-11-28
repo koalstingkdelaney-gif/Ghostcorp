@@ -4,7 +4,9 @@
 
 The repository includes a container build for the existing FastAPI application.
 It expects a persistent volume mounted at `/data` and sets
-`AGENCY_DB_PATH=/data/agency.db`. SQLite is not safe to keep on an ephemeral
+`AGENCY_DB_PATH=/data/agency.db`. The process runs as the non-root
+`ghostcorp` user, so the mounted volume must be writable by that container
+user. SQLite is not safe to keep on an ephemeral
 container filesystem: replacing or restarting an instance without persistent
 storage can lose customer submissions, audit records, approvals, task queues,
 agent lifecycle state and verified sales.
