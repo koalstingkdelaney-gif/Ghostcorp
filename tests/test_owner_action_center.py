@@ -18,3 +18,8 @@ def test_action_center_is_owner_protected(monkeypatch):
     assert "product_drafts" in payload
     assert "dream_artifacts" in payload
     assert payload["capability_status"]["live_workers"] is False
+
+    # Verified provider events appear in the same private operational view.
+    assert "commerce" in payload
+    assert isinstance(payload["commerce"]["verified_sales"], list)
+    assert "not summed" in payload["commerce"]["amount_note"]
