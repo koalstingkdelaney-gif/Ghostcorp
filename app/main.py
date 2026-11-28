@@ -137,6 +137,7 @@ def owner_auth_logout(request: Request,
             raise HTTPException(403, "same-origin request required")
         if not _secrets.compare_digest(x_csrf_token, str(session["csrf"])):
             raise HTTPException(403, "CSRF validation failed")
+    owner_auth.revoke_session(ghostcorp_owner_session)
     response = RedirectResponse(owner_auth.site_origin() + "/", status_code=303)
     response.delete_cookie(owner_auth.SESSION_COOKIE, path="/")
     response.delete_cookie(owner_auth.CSRF_COOKIE, path="/")
