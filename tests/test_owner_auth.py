@@ -72,3 +72,64 @@ def test_owner_session_rejects_expired_or_wrong_identity(monkeypatch):
                                    "exp": int(time.time()) + 600},
                                   "test-session-secret-that-is-long-enough")
     assert owner_auth.read_session(wrong_user) is None
+
+class FakeResponse:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self.payload
+
+
+class FakeGitHubClient:
+    email_payload = [{"email": "owner@example.com", "verified": True, "primary": True}]
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def post(self, url, **kwargs):
+        return FakeResponse({"access_token": "short-lived-test-token"})
+
+    def get(self, url, **kwargs):
+        if url.endswith("/user/emails"):
+            return FakeResponse(self.email_payload)
+        return FakeResponse({"login": "koalstingkdelaney-gif"})
+
+
+def test_github_oauth_requires_matching_verified_owner_email(monkeypatch):
+    from urllib.parse import parse_qs, urlsplit
+
+    configure_owner(monkeypatch)
+    monkeypatch.setattr(owner_auth.httpx, "Client", FakeGitHubClient)
+    _, state_cookie = owner_auth.issue_state()
+    state = parse_qs(urlsplit(owner_auth.issue_state()[0]).query)["state"][0]
+    session, csrf = owner_auth.complete_login("authorization-code", state, state_cookie)
+    parsed = owner_auth.read_session(session)
+    assert parsed["sub"] == "koalstingkdelaney-gif"
+    assert parsed["csrf"] == csrf
+
+
+def test_github_oauth_rejects_unverified_owner_email(monkeypatch):
+    from urllib.parse import parse_qs, urlsplit
+
+    configure_owner(monkeypatch)
+    FakeGitHubClient.email_payload = [
+        {"email": "owner@example.com", "verified": False, "primary": True}
+    ]
+    monkeypatch.setattr(owner_auth.httpx, "Client", FakeGitHubClient)
+    authorize_url, state_cookie = owner_auth.issue_state()
+    state = parse_qs(urlsplit(authorize_url).query)["state"][0]
+    with pytest.raises(PermissionError, match="verified owner email"):
+        owner_auth.complete_login("authorization-code", state, state_cookie)
+    FakeGitHubClient.email_payload = [
+        {"email": "owner@example.com", "verified": True, "primary": True}
+    ]
