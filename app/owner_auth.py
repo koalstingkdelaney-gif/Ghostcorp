@@ -19,6 +19,7 @@ import httpx
 
 SESSION_COOKIE = "ghostcorp_owner_session"
 CSRF_COOKIE = "ghostcorp_owner_csrf"
+STATE_COOKIE = "ghostcorp_oauth_state"
 SESSION_TTL = 8 * 60 * 60
 STATE_TTL = 10 * 60
 
@@ -128,7 +129,7 @@ def complete_login(code: str, state: str, state_cookie: str) -> tuple[str, str]:
         isinstance(item, dict)
         and str(item.get("email", "")).lower() == s["owner_email"]
         and item.get("verified") is True
-        for item in emails if isinstance(emails, list)
+        for item in (emails if isinstance(emails, list) else [])
     )
     if not login or not hmac.compare_digest(login, s["owner_login"]) or not verified_owner_email:
         raise PermissionError("the GitHub account and verified owner email do not match the configured owner")
