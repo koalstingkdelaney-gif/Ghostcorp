@@ -171,6 +171,21 @@ class AgentRuntime:
         return cur.rowcount == 1
 
     @_synchronized
+    def tasks(self, limit=100):
+        limit = max(1, min(int(limit), 300))
+        rows = self.conn.execute(
+            """SELECT id,task_key,division_slug,required_role,task_type,status,
+                      result,created_at,updated_at,attempt_count,max_attempts,last_error
+               FROM agent_tasks ORDER BY id DESC LIMIT ?""", (limit,)
+        ).fetchall()
+        items = []
+        for row in rows:
+            item = dict(row)
+            item["result"] = json.loads(item["result"]) if item["result"] else {}
+            items.append(item)
+        return items
+
+    @_synchronized
     def status(self):
         rows=self.conn.execute(
           "SELECT status,COUNT(*) AS count FROM agent_tasks GROUP BY status"
