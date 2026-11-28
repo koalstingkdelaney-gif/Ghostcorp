@@ -70,3 +70,13 @@ def test_unknown_machine_cannot_change_world(tmp_path):
         assert "no world identity" in str(exc)
     else:
         raise AssertionError("unknown machine identity must be rejected")
+
+
+def test_same_event_key_is_independent_between_departments(tmp_path):
+    world, research, builder = setup(tmp_path)
+    for agent, title in ((research, "Research note"), (builder, "Build note")):
+        result = world.record_learning(
+            agent["machine_id"], "shared-client-event-001", "display-panel",
+            title, "Department-specific change", {})
+        assert result["outcome"] == "created"
+    assert len(world.adaptations()) == 2
