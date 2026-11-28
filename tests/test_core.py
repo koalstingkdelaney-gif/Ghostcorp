@@ -80,15 +80,20 @@ def test_comms_refuses_without_consent_even_if_enabled():
         c.place_call("+15551234567", "script-1", None)
 
 
-def test_api_health_and_comms_endpoints():
+def test_api_health_and_comms_endpoints(monkeypatch):
     from fastapi.testclient import TestClient
-    from app.main import app
-    client = TestClient(app)
+    from app import main
+
+    monkeypatch.setattr(main, "FEDERATION_ADMIN_TOKEN", "test-owner-secret")
+    client = TestClient(main.app)
     assert client.get("/health").json()["ok"] is True
     assert client.get("/api/packages").json()["AI Website"]["upfront_usd"] == 499
     assert client.post("/api/comms/call").status_code == 403
-    r = client.post("/api/leads", json={"name": "Test Co", "email": "t@example.com",
-                                        "service": "AI Website"})
+    r = client.post(
+        "/api/leads",
+        json={"name": "Test Co", "email": "t@example.com", "service": "AI Website"},
+        headers={"X-Federation-Admin": "test-owner-secret"},
+    )
     assert r.json()["outcome"] in ("added", "duplicate")
 
 
