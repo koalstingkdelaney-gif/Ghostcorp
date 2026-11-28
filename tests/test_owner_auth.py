@@ -19,13 +19,7 @@ def configure_owner(monkeypatch):
 
 
 def make_session():
-    csrf = "csrf-test-token"
-    token = owner_auth._sign({
-        "sub": "koalstingkdelaney-gif",
-        "csrf": csrf,
-        "exp": int(time.time()) + 600,
-    }, "test-session-secret-that-is-long-enough")
-    return token, csrf
+    return owner_auth._issue_session("koalstingkdelaney-gif")
 
 
 def test_owner_oauth_is_locked_until_provider_configuration(monkeypatch):
