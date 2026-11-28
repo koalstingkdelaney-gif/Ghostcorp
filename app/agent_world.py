@@ -203,6 +203,21 @@ class AgentWorld:
                     "world_time_utc": _utc(), "counts": counts, "agents": agents}
 
 
+    @staticmethod
+    def zones_for_division(division_slug, role):
+        """Return the small set of spaces a division is allowed to adapt."""
+        zone_groups = {
+            "research-lab": {"research-lab", "research-library"},
+            "build-lab": {"build-lab", "design-studio"},
+            "qa-lab": {"qa-lab", "security-center"},
+            "analytics": {"analytics", "strategy-room"},
+            "operations": {"operations", "server-room"},
+            "command-center": {"command-center", "commons"},
+        }
+        if division_slug in zone_groups:
+            return zone_groups[division_slug]
+        return {AgentWorld.routine_for(role, 12)["zone"]}
+
     def record_learning(self, machine_id, event_key, change_type, title, summary, config=None):
         """Persist a bounded, declarative world adaptation in the agent's current zone."""
         import json
@@ -247,6 +262,8 @@ class AgentWorld:
             ).fetchone()
             if not agent:
                 raise LookupError("agent has no world identity")
+            if agent["zone"] not in self.zones_for_division(agent["division_slug"], self.conn.execute(\n                "SELECT role FROM world_agents WHERE machine_id=?", (machine_id,)\n            ).fetchone()["role"]):
+                raise ValueError("agent cannot adapt a zone outside its division workspace")
             now = _utc()
             encoded = json.dumps(config, separators=(",", ":"), ensure_ascii=False)
             scoped_event_key = machine_id + ":" + event_key
