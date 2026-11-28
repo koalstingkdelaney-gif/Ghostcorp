@@ -115,3 +115,14 @@ At the end of each cycle, report: commits and links, test results, what is now a
 ## 12. Current deployment limitations
 
 Do not claim GhostCorp is fully operational yet. Production backend hosting, persistent production storage, reverse proxy, owner OAuth credentials, real Quest hardware verification, always-on model workers, live Gumroad verification, customer payments, payouts, and verified revenue require separate setup and evidence. A successful static-site deployment does not deploy the backend.
+
+
+## 13. Latest integration progress — 2026-11-28
+
+- The existing website VR bridge now checks `/auth/status`, `/auth/me`, and the real `/api/world/snapshot` response shape. It does not persist private snapshots in localStorage. The site smoke checks and Pages deployment passed on site commit `b142f3cd144a02688e0e1c56308977bfaebed412`.
+- Added a scoped Cloudflare Worker proxy at `infra/cloudflare/ghostcorp-api-proxy.js` and deployment instructions at `docs/CLOUDFLARE-API-PROXY.md`. It is source-only until a backend HTTPS origin and Cloudflare route configuration exist.
+- Added `scripts/run_worker_loop.py` and `tests/test_worker_loop.py`. Backend CI run 46177770963 passed 158 tests, built the Docker image, and passed the container smoke test with a writable `/data` mount. This is not production deployment or proof of a running worker/model.
+- Hosting inspection found no Render service connected to the existing backend repository. The visible Render free services belong to unrelated repos and do not provide a safe durable SQLite deployment. The connected Supabase account has an organization but no project; none was created.
+- Added `docs/FREE-FIRST-HOSTING-DECISION-2026-11-28.md`. Oracle Cloud Always Free Ampere A1 plus persistent volume is the next candidate to investigate, but Oracle requires card-based account verification and documents idle-instance reclamation. Do not treat it as guaranteed 24/7 or provision it without owner account setup and explicit review of the free-tier limits.
+
+The remaining blockers are owner-side provider account verification, persistent VM/volume provisioning, private OAuth credentials, Cloudflare Worker deployment and DNS routes, and actual Meta Quest hardware testing. Keep spend at $0 and do not claim these are complete until evidence exists.
