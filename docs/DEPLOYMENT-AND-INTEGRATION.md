@@ -74,8 +74,10 @@ approval before selecting a paid tier or enabling automatic upgrades.
 
 ## Current state
 
-The Dockerfile and integration code are repository artifacts, not a live
-deployment. No production host, persistent volume, OAuth credentials, Gumroad
-token, Ping configuration, reverse proxy, or Quest 3 test session has been
-verified. Do not call the backend or VR world operational until the above
-checks pass.
+The Dockerfile has passed CI image-build and container-start smoke tests
+with a writable `/data` mount and successful `/health` response. This proves
+the container can start in CI; it is not a live deployment. No production
+host, production persistent volume, OAuth credentials, Gumroad token, Ping
+configuration, reverse proxy, or Quest 3 test session has been verified.
+Do not call the backend or VR world fully operational until the above checks
+pass.
