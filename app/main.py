@@ -519,16 +519,24 @@ def update_website_service_delivery(request_id: int, payload: ServiceDeliveryIn)
     for entry in raw_map.split(";"):
         if "=" in entry:
             key, value = entry.split("=", 1)
-            package_map[key.strip()] = value.strip()
-    expected_permalink = package_map.get(item["package"])
-    if not expected_permalink:
-        raise HTTPException(503, "verified Gumroad product mapping is not configured for this service package")
+            parts = [part.strip() for part in value.split(":")]
+            if len(parts) == 3:
+                package_map[key.strip()] = {
+                    "permalink": parts[0], "amount_raw": parts[1],
+                    "currency": parts[2].upper(),
+                }
+    expected = package_map.get(item["package"])
+    if not expected or not expected["amount_raw"] or not expected["currency"]:
+        raise HTTPException(503, "verified Gumroad product, exact provider amount and currency mapping are not configured for this service package")
     sale = gumroad_sales.conn.execute(
-        "SELECT sale_id,product_permalink,status FROM gumroad_verified_sales WHERE sale_id=?",
+        "SELECT sale_id,product_permalink,status,amount_raw,currency FROM gumroad_verified_sales WHERE sale_id=?",
         (payload.payment_sale_id,),
     ).fetchone()
-    if not sale or sale["status"] != "PAID_VERIFIED" or sale["product_permalink"] != expected_permalink:
-        raise HTTPException(409, "matching provider-verified Gumroad payment is required before delivery")
+    if (not sale or sale["status"] != "PAID_VERIFIED"
+            or sale["product_permalink"] != expected["permalink"]
+            or sale["amount_raw"] != expected["amount_raw"]
+            or sale["currency"] != expected["currency"]):
+        raise HTTPException(409, "matching provider-verified Gumroad product, amount and currency are required before delivery")
     try:
         result = service_workflow.update_delivery(
             request_id, payload.status, payload.notes, payload.deliverable_url,
