@@ -231,3 +231,23 @@ freshly rerun or independently reverified in this update.
 - Added a separate visual environment with a floating crystalline core, orbital rings, energy pillars, and ambient particles. The scene is explicitly labelled as a preview, not live agent activity.
 - JavaScript module syntax was checked after the update. No Quest 3 headset session, frame-rate benchmark, live backend connection, or authenticated artifact rendering was tested.
 - The preview has no live AI, customer data, business credentials, or executable dream workloads connected.
+
+
+## Private business API access hardening (2026-11-27)
+
+- Fixed an exposed-data risk: prospect records and business pipeline mutations
+  previously lacked the owner-admin dependency used by other private platform
+  routes.
+- Applied the existing `FEDERATION_ADMIN_TOKEN` gate to lead intake, lead
+  listing, discovery import, website audits, proposal drafting, job execution,
+  and dashboard summary. The secret is supplied only through the backend
+  environment and sent as `X-Federation-Admin`; it is not embedded in the site.
+- Missing server configuration fails closed with HTTP 503; missing or incorrect
+  credentials return HTTP 403. Public health, package catalogue and sanitized
+  public build journal remain public.
+- Added `tests/test_owner_api_auth.py` for locked, rejected and authorized
+  access paths. Tests have **not yet been executed**; await CI before claiming
+  this change is verified.
+- This is an API admin gate, not the finished owner email sign-in or browser
+  session bridge. A backend deployment must configure the secret privately
+  before private admin routes can be used.
