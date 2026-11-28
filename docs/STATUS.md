@@ -181,8 +181,8 @@ freshly rerun or independently reverified in this update.
 - Corrected a contradictory contributor-approval test: unknown contributor IDs are rejected, a pending contributor can be approved once, and duplicate approval is rejected. The registry's existing owner-review model was preserved.
 - Added strict artifact path validation for dot components, repeated separators and trailing separators.
 - Added app/artifact_quarantine.py: bounded 1 MiB default intake (10 MiB hard ceiling), active/non-expired workspace verification, no-follow path traversal, symlink/hard-link/special-file rejection, private 0700 roots, 0600 quarantine objects, SHA-256 hashing, source-mutation detection, atomic .part-to-.bin finalization, and basic content classification.
-- Added owner-admin API routes POST /api/artifacts/quarantine and GET /api/artifacts/quarantine plus public configuration-only GET /api/artifacts/status.
-- Added tests/test_artifact_quarantine.py and API default-deny tests. Latest successful GitHub Actions run: 46085364193 on commit 733f125c32af4b3886811d4ee385804755940b01; **96 passed, 1 warning**.
+- Added owner-admin API routes POST /api/artifacts/quarantine and GET /api/artifacts/quarantine plus public configuration-only GET /api/artifacts/status; readiness now includes the owner-admin gate.
+- Added tests/test_artifact_quarantine.py and API default-deny tests. Latest successful GitHub Actions run: 46085467468 on commit 4029d30babb3c5f7b940c5b3caa4540cee881dc3; **96 passed, 1 warning**.
 - The earlier CI run on commit 6b8959df failed with two test failures; both were addressed, and the latest run is green. The Starlette/httpx deprecation warning remains non-fatal.
 
 ## Current lifecycle status
