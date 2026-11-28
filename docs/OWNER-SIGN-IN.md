@@ -1,24 +1,57 @@
 # Owner sign-in and account identity
 
-## Requested owner account
+## Implemented in code
 
-The requested owner sign-in address is supplied by the owner in the private setup conversation. Do not commit the address itself to this public repository, embed it in frontend JavaScript, or print it in logs.
+The backend now supports GitHub OAuth owner sign-in with an exact account
+allowlist and a separately configured, verified owner email. During the OAuth
+callback it:
 
-When a supported authentication provider and production host are selected, configure the owner address as a private deployment secret named GHOSTCORP_OWNER_EMAIL. The authentication provider must verify control of that mailbox (for example, by a one-time sign-in link or code). An email address written into configuration is not proof of ownership.
+1. Validates a short-lived, signed OAuth state cookie.
+2. Exchanges the authorization code server-side; the client secret is never
+   sent to the browser.
+3. Checks the returned GitHub login against `OWNER_GITHUB_LOGIN`.
+4. Reads the account's email list using the `user:email` scope and requires
+   `GHOSTCORP_OWNER_EMAIL` to be explicitly marked verified.
+5. Issues an eight-hour HMAC-signed, Secure, HttpOnly, SameSite=Lax session
+   cookie plus a CSRF token cookie.
+6. Requires the CSRF token and exact configured site Origin on browser
+   mutations.
 
-## Required sign-in behavior
+No public signup grants owner access. The GitHub access token is not stored.
+The owner browser Action Center and local research worker use the session
+cookie; they do not store the raw federation admin secret or machine tokens.
 
-- Owner-only access to private GhostCorp business operations and the private VR command environment.
-- Verified email sign-in with secure session cookies, CSRF protection, session expiry and revocation.
-- No public signup that grants owner privileges.
-- No owner email, password, access token, admin token or machine token in Git, browser source, local storage or public VR assets.
-- Recovery must use the identity provider's verified recovery process.
-- Public games and social spaces remain separated from private business data, bots, customer records, finances and owner controls.
+## Private runtime configuration
 
-## Current status
+Set these values only in the backend host's secret manager:
 
-The existing ghostcorpnet-site repository is a static website. The backend repository currently has token-protected federation administration endpoints, but no production owner email authentication or website-to-backend session bridge is deployed. Do not describe the requested address as an active login until an authentication provider is configured, mailbox ownership is verified, the callback domain is configured and a live sign-in is tested.
+- `GITHUB_OAUTH_CLIENT_ID`
+- `GITHUB_OAUTH_CLIENT_SECRET`
+- `OWNER_GITHUB_LOGIN` — exact owner GitHub login
+- `GHOSTCORP_OWNER_EMAIL` — exact verified email on that GitHub account
+- `OWNER_SESSION_SECRET` — long random HMAC secret
+- `GITHUB_OAUTH_REDIRECT_URI` — exact callback URL
+- `GHOSTCORP_SITE_ORIGIN` — exact HTTPS origin, currently intended as
+  `https://ghostcorpnet.com`
+- `FEDERATION_ADMIN_TOKEN` — separate server/admin credential; never expose
+  it to browser JavaScript
 
-## Cost policy
+Register a GitHub OAuth App with the callback URI exactly matching
+`GITHUB_OAUTH_REDIRECT_URI`. The requested OAuth scopes are `read:user`
+and `user:email`. Do not paste any secret into a chat or commit it to Git.
 
-Use a provider-supported free tier only if its current limits meet the actual workload. Keep paid spend at $0 by default, prevent automatic upgrades and fail closed when free quotas are exhausted. Free tiers and hosted services can change or impose limits; no always-on hosting or email delivery should be promised as permanently free.
+## Deployment requirement
+
+The static website and backend must be routed through a same-origin HTTPS
+reverse proxy for `/auth/*`, `/api/*` and `/webhooks/*`, or an equivalent
+secure same-site setup with a reviewed CORS/cookie configuration. The current
+browser pages use relative same-origin API paths. A static GitHub Pages site
+alone cannot run FastAPI.
+
+## Status
+
+The OAuth/session code and tests are in the backend repository. No OAuth App,
+client secret, owner email environment setting, production callback, backend
+host, reverse proxy or live browser sign-in has been configured or tested.
+Therefore owner sign-in is **implemented in code but not activated or
+deployed**. It is not yet a verified live login.
