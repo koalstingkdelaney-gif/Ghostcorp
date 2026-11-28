@@ -763,6 +763,13 @@ class OwnerLifecycleTransitionIn(BaseModel):
     reason: str = Field(default="", max_length=300)
 
 
+class OwnerDreamArtifactIn(BaseModel):
+    artifact_type: str = Field(min_length=2, max_length=40)
+    title: str = Field(min_length=1, max_length=100)
+    summary: str = Field(min_length=1, max_length=1000)
+    artifact: dict = Field(default_factory=dict)
+
+
 class OwnerTaskCompleteIn(BaseModel):
     machine_id: str = Field(min_length=8, max_length=80)
     lease_token: str = Field(min_length=20, max_length=200)
@@ -813,6 +820,25 @@ def owner_transition_agent(machine_id: str, payload: OwnerLifecycleTransitionIn)
         store.log("federation_admin", "owner_agent_transition", machine_id + ":" + result["mode"])
         return result
     except (ValueError, LookupError) as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.post("/api/owner/agents/{machine_id}/dream-artifacts",
+          dependencies=[Depends(require_federation_admin)])
+def owner_submit_dream_artifact(machine_id: str, payload: OwnerDreamArtifactIn):
+    record = federation.conn.execute(
+        "SELECT division_slug FROM machine_agents WHERE machine_id=? AND status='PROVISIONED'",
+        (machine_id,),
+    ).fetchone()
+    if not record:
+        raise HTTPException(404, "provisioned agent not found")
+    try:
+        result = agent_lifecycle.add_dream_artifact(
+            machine_id, record["division_slug"], payload.artifact_type,
+            payload.title, payload.summary, payload.artifact)
+        store.log("federation_admin", "owner_dream_artifact_submitted", str(result["id"]))
+        return result
+    except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
 
 
