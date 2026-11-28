@@ -16,6 +16,8 @@ on:
       - "scripts/**"
       - "tests/**"
       - "requirements.txt"
+      - "Dockerfile"
+      - ".dockerignore"
       - ".github/workflows/tests.yml"
   schedule:
     - cron: "41 5 * * 1"
@@ -45,6 +47,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/ghostcorp-smoke-data"
           docker run -d --rm --stop-timeout 5 --name ghostcorp-backend-smoke \
             -p 8765:8000 \
+            -e PORT=8000 \
             -v "$RUNNER_TEMP/ghostcorp-smoke-data:/data" \
             ghostcorp-backend:test
           for attempt in {1..40}; do
