@@ -8,6 +8,7 @@ from app import main, owner_auth
 
 
 def configure_owner(monkeypatch):
+    monkeypatch.setenv("AGENCY_DB_PATH", "data/owner-auth-tests.db")
     monkeypatch.setenv("GITHUB_OAUTH_CLIENT_ID", "client-id")
     monkeypatch.setenv("GITHUB_OAUTH_CLIENT_SECRET", "client-secret")
     monkeypatch.setenv("OWNER_GITHUB_LOGIN", "koalstingkdelaney-gif")
