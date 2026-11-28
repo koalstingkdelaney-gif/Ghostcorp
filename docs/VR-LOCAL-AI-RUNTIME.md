@@ -39,9 +39,11 @@ The worker:
 - This is a small local assistant; it is not sentient and does not self-train.
 - The local worker is not a background service. Closing or suspending the
   browser stops compute; a leased task will need to expire/retry.
-- The existing wake/sleep/dream state machine is not yet a full autonomous
-  dream scheduler. There is no isolated dream-code execution runtime or
-  automatic self-modification.
+- The existing wake/sleep/dream state machine now supports a manually triggered
+  bounded dream session in the browser: SLEEPING -> DREAMING -> WAKING ->
+  WORKING, with a reviewable proposal submitted to the owner queue. It is not
+  an autonomous dream scheduler. There is no isolated dream-code execution
+  runtime or automatic self-modification.
 - The chat page is a separate VR page linked from the world; a persistent
   in-world floating chat panel is not yet implemented.
 - The browser worker cannot browse the live web. Research results must label
