@@ -18,9 +18,11 @@ from .jobs import run_pending
 from .proposals import PACKAGES, build_proposal
 from .scoring import score_lead
 from .store import Store
+from .customer_feedback import CustomerFeedback, FeedbackError
 
 settings = load_settings()
 store = Store(settings.db_path)
+customer_feedback = CustomerFeedback(settings.db_path)
 governor = SpendGovernor(settings.spend_cap_usd)
 comms = DisabledCommsProvider(settings.calling_enabled, settings.sms_enabled)
 
@@ -28,6 +30,7 @@ comms = DisabledCommsProvider(settings.calling_enabled, settings.sms_enabled)
 # The secret is supplied only by the deployment environment, never Git.
 import os
 import secrets as _secrets
+import os
 
 FEDERATION_ADMIN_TOKEN = os.environ.get("FEDERATION_ADMIN_TOKEN", "")
 
@@ -151,6 +154,67 @@ class LeadIn(BaseModel):
 class DiscoveryImportIn(BaseModel):
     provider: str = Field(min_length=1, max_length=80)
     results: list[dict] = Field(max_length=100)
+
+
+class PublicProblemSubmissionIn(BaseModel):
+    problem: str = Field(min_length=20, max_length=2000)
+    context: str = Field(default="", max_length=1500)
+    email: str = Field(default="", max_length=254)
+    contact_permission: bool = False
+    website: str = Field(default="", max_length=120)
+
+
+class ProblemSubmissionReviewIn(BaseModel):
+    status: str = Field(pattern=r"^(REVIEWED|ROADMAP|CLOSED)$")
+
+
+@app.post("/api/public/problem-submissions")
+def submit_customer_problem(payload: PublicProblemSubmissionIn, request: Request):
+    """Accept a product-problem suggestion without exposing private business records."""
+    guard_mutation()
+    if payload.website.strip():  # Honeypot: silently accept automated spam.
+        return {"accepted": True}
+    client_ip = request.client.host if request.client else "unknown"
+    rate_secret = os.environ.get("PUBLIC_FEEDBACK_RATE_SECRET", "")
+    if not rate_secret or len(rate_secret) < 32:
+        raise HTTPException(503, "public feedback intake is not configured")
+    try:
+        fingerprint = customer_feedback.fingerprint(client_ip, rate_secret)
+        customer_feedback.submit(payload.problem, payload.context, payload.email,
+                                 payload.contact_permission, fingerprint)
+        store.log("public", "customer_problem_received", "new submission")
+        return {"accepted": True,
+                "message": "Thank you. Your problem suggestion has been received for review."}
+    except FeedbackError as exc:
+        message = str(exc)
+        if "rate-limit secret" in message:
+            raise HTTPException(503, message) from exc
+        raise HTTPException(422, message) from exc
+
+
+@app.get("/api/customer/problem-submissions",
+         dependencies=[Depends(require_federation_admin)])
+def list_customer_problem_submissions(status: str = "NEW", limit: int = 100):
+    try:
+        return {"items": customer_feedback.list(status, limit)}
+    except FeedbackError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.post("/api/customer/problem-submissions/{submission_id}/review",
+          dependencies=[Depends(require_federation_admin)])
+def review_customer_problem_submission(submission_id: int,
+                                        payload: ProblemSubmissionReviewIn):
+    guard_mutation()
+    try:
+        result = customer_feedback.update_status(submission_id, payload.status)
+        store.log("federation_admin", "customer_problem_review",
+                  str(submission_id) + ":" + payload.status)
+        return result
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except FeedbackError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @app.get("/health")
