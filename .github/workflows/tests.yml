@@ -39,3 +39,21 @@ jobs:
         run: python -m pytest -q
       - name: Build backend container
         run: docker build --tag ghostcorp-backend:test .
+      - name: Smoke-test container with persistent data mount
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/ghostcorp-smoke-data"
+          docker run -d --rm --name ghostcorp-backend-smoke \
+            -p 8765:8000 \
+            -v "$RUNNER_TEMP/ghostcorp-smoke-data:/data" \
+            ghostcorp-backend:test
+          for attempt in {1..25}; do
+            if curl --fail --silent http://127.0.0.1:8765/health; then
+              docker stop ghostcorp-backend-smoke
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs ghostcorp-backend-smoke
+          docker stop ghostcorp-backend-smoke || true
+          exit 1
