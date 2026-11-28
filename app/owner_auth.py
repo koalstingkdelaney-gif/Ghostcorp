@@ -12,7 +12,9 @@ import hmac
 import json
 import os
 import secrets
+import sqlite3
 import time
+from pathlib import Path
 from urllib.parse import urlencode
 
 import httpx
@@ -90,6 +92,57 @@ def issue_state() -> tuple[str, str]:
     return "https://github.com/login/oauth/authorize?" + urlencode(params), cookie
 
 
+def _session_connection():
+    path = os.environ.get("AGENCY_DB_PATH", "data/agency.db")
+    if path != ":memory:":
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path, timeout=30)
+    conn.execute("PRAGMA busy_timeout=30000")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS owner_sessions (
+          session_id TEXT PRIMARY KEY,
+          expires_at INTEGER NOT NULL,
+          revoked_at INTEGER NOT NULL DEFAULT 0
+        )
+    """)
+    conn.commit()
+    return conn
+
+
+def _issue_session(login: str) -> tuple[str, str]:
+    s = _settings()
+    csrf = secrets.token_urlsafe(32)
+    session_id = secrets.token_urlsafe(24)
+    expires = int(time.time()) + SESSION_TTL
+    conn = _session_connection()
+    try:
+        conn.execute("INSERT INTO owner_sessions(session_id,expires_at,revoked_at) VALUES(?,?,0)",
+                     (session_id, expires))
+        conn.commit()
+    finally:
+        conn.close()
+    token = _sign({"sub": login, "csrf": csrf, "sid": session_id, "exp": expires},
+                  s["session_secret"])
+    return token, csrf
+
+
+def revoke_session(cookie: str) -> None:
+    s = _settings()
+    if not configured() or not cookie:
+        return
+    payload = _verify(cookie, s["session_secret"])
+    session_id = payload.get("sid") if payload else None
+    if not session_id:
+        return
+    conn = _session_connection()
+    try:
+        conn.execute("UPDATE owner_sessions SET revoked_at=? WHERE session_id=?",
+                     (int(time.time()), session_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def complete_login(code: str, state: str, state_cookie: str) -> tuple[str, str]:
     s = _settings()
     if not configured():
@@ -133,10 +186,7 @@ def complete_login(code: str, state: str, state_cookie: str) -> tuple[str, str]:
     )
     if not login or not hmac.compare_digest(login, s["owner_login"]) or not verified_owner_email:
         raise PermissionError("the GitHub account and verified owner email do not match the configured owner")
-    csrf = secrets.token_urlsafe(32)
-    session = _sign({"sub": login, "csrf": csrf,
-                     "exp": int(time.time()) + SESSION_TTL}, s["session_secret"])
-    return session, csrf
+    return _issue_session(login)
 
 
 def read_session(cookie: str) -> dict | None:
@@ -144,7 +194,19 @@ def read_session(cookie: str) -> dict | None:
     if not configured() or not cookie:
         return None
     data = _verify(cookie, s["session_secret"])
-    if not data or data.get("sub") != s["owner_login"] or not data.get("csrf"):
+    if not data or data.get("sub") != s["owner_login"] or not data.get("csrf") or not data.get("sid"):
+        return None
+    conn = _session_connection()
+    try:
+        row = conn.execute(
+            "SELECT expires_at,revoked_at FROM owner_sessions WHERE session_id=?",
+            (data["sid"],),
+        ).fetchone()
+    except sqlite3.Error:
+        return None
+    finally:
+        conn.close()
+    if not row or row[1] or int(row[0]) < int(time.time()):
         return None
     return data
 
