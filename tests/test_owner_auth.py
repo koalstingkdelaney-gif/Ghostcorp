@@ -145,3 +145,8 @@ def test_owner_logout_revokes_server_side_session(monkeypatch):
     )
     assert response.status_code == 303
     assert owner_auth.read_session(token) is None
+
+def test_owner_oauth_rejects_short_session_signing_secret(monkeypatch):
+    configure_owner(monkeypatch)
+    monkeypatch.setenv("OWNER_SESSION_SECRET", "too-short")
+    assert owner_auth.configured() is False
