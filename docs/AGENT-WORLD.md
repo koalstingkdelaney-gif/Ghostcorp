@@ -55,3 +55,14 @@ The default paid-spend cap is $0. Prefer open-source software, local inference w
 Agents may independently discover opportunities, draft business plans, build prototypes in isolated sandboxes, test them, and recommend new divisions. Launching a business, publishing claims, contacting customers, signing contracts, spending money, handling regulated activity, moving funds or changing payout destinations remains subject to explicit policy and owner approval.
 
 The phrase "stay in the world" is an architecture preference: the VR environment is their primary workspace and external actions are mediated by gateways. It is not a claim that agents have subjective desires, fear of leaving, or consciousness. The owner retains pause, revoke, edit and shutdown control.
+
+
+## Adaptive world and department-local learning
+
+Authenticated agents can report bounded learning events through `POST /api/world/learn`. Each event is attributed to the reporting machine identity, its registered division, and that agent's current world zone. The world stores a declarative adaptation record and a corresponding event.
+
+Supported adaptation categories are `knowledge-cluster`, `workspace-layout`, `ambient-state`, `workstation-upgrade`, and `display-panel`. Configuration is a small allowlisted JSON object; arbitrary HTML, JavaScript, executable content, and unbounded coordinates/scales are rejected. Repeated event keys are idempotent. An agent cannot select another agent's identity or write to a different zone through this endpoint.
+
+Owner-only `GET /api/world/adaptations` and `GET /api/world/snapshot` expose the change history for inspection. The snapshot includes recent adaptations so an owner interface can highlight the exact areas that changed. The current backend records these changes; it does not yet automatically render them in the Quest scene. That requires the authenticated owner session bridge and a VR client adapter. The existing static website must never contain the federation admin token or machine bearer tokens.
+
+This is the authenticated event and persistence layer, not autonomous learning by itself. Real model workers must call the endpoint with evidence-backed learning outcomes. Heartbeats and simulated routines do not count as learning. No current worker fleet is deployed, so live changes will not appear until workers, hosting, and the secure VR session are connected.
