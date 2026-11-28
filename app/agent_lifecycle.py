@@ -19,7 +19,7 @@ TRANSITIONS = {
     "WAKING": {"WORKING", "PAUSED"},
     "PAUSED": {"INITIALIZING", "WORKING", "SLEEPING"},
 }
-DREAM_TYPES = {"idea", "research", "prototype-plan", "skill-proposal", "world-change-proposal"}
+DREAM_TYPES = {"idea", "research", "prototype-plan", "skill-proposal", "world-change-proposal", "customer-research", "customer-acquisition-plan", "business-model", "workflow-improvement", "product-opportunity", "product-release-plan"}
 
 
 def _now():
@@ -132,6 +132,29 @@ class AgentLifecycle:
                           artifact,status,created_at FROM dream_artifacts
                    WHERE status=? ORDER BY id DESC LIMIT ?""",(status,limit)).fetchall()
             return [{**dict(row),"artifact":json.loads(row["artifact"])} for row in rows]
+
+    def review_artifact(self, artifact_id, decision, reviewer="owner"):
+        if decision not in {"APPROVED", "REJECTED"}:
+            raise ValueError("decision must be APPROVED or REJECTED")
+        with self.lock:
+            row = self.conn.execute(
+                "SELECT id,status,machine_id,division_slug,title FROM dream_artifacts WHERE id=?",
+                (int(artifact_id),)).fetchone()
+            if not row:
+                raise LookupError("dream artifact not found")
+            if row["status"] != "AWAITING_REVIEW":
+                raise ValueError("dream artifact has already been reviewed")
+            now = _now()
+            cur = self.conn.execute(
+                "UPDATE dream_artifacts SET status=? WHERE id=? AND status='AWAITING_REVIEW'",
+                (decision, int(artifact_id)))
+            if cur.rowcount != 1:
+                raise ValueError("dream artifact review conflict")
+            self.conn.commit()
+            return {"id": row["id"], "status": decision, "machine_id": row["machine_id"],
+                    "division": row["division_slug"], "title": row["title"],
+                    "reviewed_at": now, "reviewer": str(reviewer)[:80],
+                    "promotion": "NOT_PERFORMED"}
 
     def snapshot(self):
         with self.lock:
