@@ -55,3 +55,6 @@ client secret, owner email environment setting, production callback, backend
 host, reverse proxy or live browser sign-in has been configured or tested.
 Therefore owner sign-in is **implemented in code but not activated or
 deployed**. It is not yet a verified live login.
+
+
+Server-side session records are persisted in the same configured SQLite database and are revoked when the owner signs out. If the database is unavailable, session validation fails closed.
