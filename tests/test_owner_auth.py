@@ -129,3 +129,18 @@ def test_github_oauth_rejects_unverified_owner_email(monkeypatch):
     FakeGitHubClient.email_payload = [
         {"email": "owner@example.com", "verified": True, "primary": True}
     ]
+
+def test_owner_logout_revokes_server_side_session(monkeypatch):
+    configure_owner(monkeypatch)
+    token, csrf = make_session()
+    client = TestClient(main.app, base_url="https://testserver")
+    response = client.post(
+        "/auth/logout",
+        headers={
+            "Cookie": f"{owner_auth.SESSION_COOKIE}={token}",
+            "Origin": "https://ghostcorpnet.com",
+            "X-CSRF-Token": csrf,
+        },
+    )
+    assert response.status_code == 200  # TestClient follows the 303 redirect.
+    assert owner_auth.read_session(token) is None
