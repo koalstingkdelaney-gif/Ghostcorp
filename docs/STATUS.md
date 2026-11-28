@@ -214,3 +214,20 @@ freshly rerun or independently reverified in this update.
 - Updated task claiming so agents with a registered non-WORKING lifecycle state cannot claim ordinary business tasks.
 - Added `tests/test_agent_lifecycle.py` for the lifecycle cycle, invalid transitions, dream-only artifact submission, payload limits, and owner-review queue.
 - This is coordination and persistence only: no deployed AI workers, autonomous model self-training, dream-realm renderer, isolated dream execution host, or production deployment has been verified. Tests have not been run here.
+
+
+## Dream-realm business research and product pipeline (2026-11-27)
+
+- Expanded allowed dream artifact types to include customer research, customer-acquisition plans, business models, workflow improvements, product opportunities, and product-release plans.
+- Added an owner-admin approve/reject endpoint for dream artifacts. A decision is recorded as APPROVED or REJECTED; approval does not automatically publish, deploy, contact customers, spend money, or promote code.
+- Newly provisioned agents are registered in INITIALIZING. The normal-work task queue now fails closed when lifecycle coordination exists: missing lifecycle state or any non-WORKING state prevents new task claims.
+- Added tests for dream business artifacts, immutable review decisions, and the lifecycle task-claim gate.
+- GitHub Actions run 46095779065 completed successfully on commit 01c3d59cd2c46e20e39e1b9cd6a68594bf3664bf: **110 passed, 1 warning**. The warning is a Starlette/httpx TestClient deprecation notice.
+- This is still coordination and review infrastructure, not an AI workforce: no deployed model workers, dream scheduler, actual sleep/dream compute, or automatic research provider is active.
+
+## Dream Realm visual preview (2026-11-27)
+
+- Added a distinct Dream Realm portal and navigable sandbox district to the existing website VR scene in the existing ghostcorpnet-site repository.
+- Added a separate visual environment with a floating crystalline core, orbital rings, energy pillars, and ambient particles. The scene is explicitly labelled as a preview, not live agent activity.
+- JavaScript module syntax was checked after the update. No Quest 3 headset session, frame-rate benchmark, live backend connection, or authenticated artifact rendering was tested.
+- The preview has no live AI, customer data, business credentials, or executable dream workloads connected.
