@@ -44,6 +44,7 @@ class WebsiteServiceWorkflow:
           accepted_at INTEGER NOT NULL DEFAULT 0,
           delivery_notes TEXT NOT NULL DEFAULT '',
           deliverable_url TEXT NOT NULL DEFAULT '',
+          payment_sale_id TEXT NOT NULL DEFAULT '',
           created_at INTEGER NOT NULL,
           updated_at INTEGER NOT NULL
         );
@@ -55,6 +56,9 @@ class WebsiteServiceWorkflow:
         CREATE INDEX IF NOT EXISTS idx_website_service_status
           ON website_service_requests(status,id DESC);
         """)
+        columns = {row["name"] for row in self.conn.execute("PRAGMA table_info(website_service_requests)")}
+        if "payment_sale_id" not in columns:
+            self.conn.execute("ALTER TABLE website_service_requests ADD COLUMN payment_sale_id TEXT NOT NULL DEFAULT ''")
         self.conn.commit()
 
     @staticmethod
@@ -210,7 +214,8 @@ class WebsiteServiceWorkflow:
         return {"status": status, "business_name": public["business_name"]}
 
     def update_delivery(self, request_id: int, status: str,
-                        notes: str = "", deliverable_url: str = "") -> dict:
+                        notes: str = "", deliverable_url: str = "",
+                        payment_sale_id: str = "") -> dict:
         if status not in {"IN_PROGRESS", "DELIVERED"}:
             raise ServiceWorkflowError("delivery status must be IN_PROGRESS or DELIVERED")
         item = self.get(request_id)
@@ -218,6 +223,8 @@ class WebsiteServiceWorkflow:
             raise LookupError("service request not found")
         if item["status"] not in {"CUSTOMER_APPROVED", "IN_PROGRESS"}:
             raise ServiceWorkflowError("customer approval is required before delivery")
+        if not payment_sale_id or len(payment_sale_id) > 180:
+            raise ServiceWorkflowError("a verified Gumroad payment reference is required")
         if status == "DELIVERED":
             parsed = urlparse(deliverable_url)
             if parsed.scheme != "https" or not parsed.hostname:
@@ -226,9 +233,9 @@ class WebsiteServiceWorkflow:
                 raise ServiceWorkflowError("delivery notes must describe the completed work")
         self.conn.execute(
             """UPDATE website_service_requests SET status=?,delivery_notes=?,
-               deliverable_url=?,updated_at=? WHERE id=?""",
+               deliverable_url=?,payment_sale_id=?,updated_at=? WHERE id=?""",
             (status, notes.strip()[:2000], deliverable_url.strip()[:2048],
-             int(time.time()), int(request_id)),
+             payment_sale_id, int(time.time()), int(request_id)),
         )
         self.conn.commit()
         return self.get(request_id)
