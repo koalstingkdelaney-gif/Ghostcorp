@@ -305,8 +305,8 @@ freshly rerun or independently reverified in this update.
   local AI chat, customer request and approval pages.
 
 ### Verification
-- GitHub Actions run `46098302612` on backend commit
-  `b4ba5cf48a84c82b224dc6d1eac5d8a9dbb87771` passed **147 tests** and built
+- GitHub Actions run `46098680721` on backend commit
+  `9faf2adda8f1204fb8a583c5ad5843d03c2e6c06` passed **148 tests** and built
   the backend Docker image successfully. One non-fatal Starlette/httpx
   TestClient deprecation warning remains.
 - The VR/static-site JavaScript modules were syntax-checked in this update.
