@@ -278,6 +278,7 @@ def review_customer_problem_submission(submission_id: int,
           dependencies=[Depends(require_federation_admin)])
 def queue_customer_problem_research(submission_id: int, payload: CustomerResearchTaskIn):
     """Turn an owner-selected customer problem into a bounded researcher task."""
+    guard_mutation()
     submission = customer_feedback.get(submission_id)
     if not submission:
         raise HTTPException(404, "submission not found")
@@ -826,6 +827,7 @@ def owner_transition_agent(machine_id: str, payload: OwnerLifecycleTransitionIn)
 @app.post("/api/owner/agents/{machine_id}/dream-artifacts",
           dependencies=[Depends(require_federation_admin)])
 def owner_submit_dream_artifact(machine_id: str, payload: OwnerDreamArtifactIn):
+    guard_mutation()
     record = federation.conn.execute(
         "SELECT division_slug FROM machine_agents WHERE machine_id=? AND status='PROVISIONED'",
         (machine_id,),
@@ -845,6 +847,7 @@ def owner_submit_dream_artifact(machine_id: str, payload: OwnerDreamArtifactIn):
 @app.post("/api/runtime/owner/claim",
           dependencies=[Depends(require_federation_admin)])
 def owner_runtime_claim(payload: OwnerAgentIn):
+    guard_mutation()
     row = federation.conn.execute(
         "SELECT machine_id,division_slug,role,status FROM machine_agents "
         "WHERE machine_id=? AND status='PROVISIONED'", (payload.machine_id,)
