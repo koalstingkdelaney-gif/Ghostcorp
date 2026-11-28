@@ -311,10 +311,11 @@ freshly rerun or independently reverified in this update.
   persistent `/data` mount; the container's `/health` endpoint responded.
   One non-fatal Starlette/httpx TestClient deprecation warning remains.
 - The VR/static-site JavaScript modules were syntax-checked in this update.
-  GitHub Pages build/deployment run `46098541903` completed successfully on
-  site commit `562f5914a9e03acadeae79a428ece92205e70487`, including the local
-  dream-session controls. This verifies the static Pages build, not Quest 3
-  hardware operation or backend connectivity.
+  GitHub Pages build/deployment run `46098839777` completed successfully on
+  site commit `adcbf297581cb905df97d812df2d0fe4ca6d9191`, including the
+  customer problem, product-draft and service-request Action Center controls.
+  The local dream-session controls are also included. This verifies the
+  static Pages build, not Quest 3 hardware operation or backend connectivity.
 - No Quest 3 hardware run, WebGPU model initialization, OAuth login, live
   Gumroad Ping, production backend deployment, persistent-volume restore,
   or customer payment/delivery has been performed.
