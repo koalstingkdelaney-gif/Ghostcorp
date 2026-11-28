@@ -55,3 +55,36 @@ def test_owner_local_worker_cannot_claim_while_agent_sleeps(monkeypatch, tmp_pat
     )
     assert response.status_code == 200
     assert response.json()["outcome"] == "no_matching_task"
+
+def test_owner_local_dream_session_can_submit_reviewable_artifact(monkeypatch, tmp_path):
+    machine_id, lifecycle, runtime = setup_owner_worker(monkeypatch, tmp_path)
+    lifecycle.transition(machine_id, "SLEEPING", reason="local work paused")
+    lifecycle.transition(machine_id, "DREAMING", goal="Explore product ideas")
+    client = TestClient(main.app)
+    response = client.post(
+        f"/api/owner/agents/{machine_id}/dream-artifacts",
+        headers={"X-Federation-Admin": "owner-worker-secret"},
+        json={
+            "artifact_type": "product-opportunity",
+            "title": "Small-business website repair kit",
+            "summary": "A repeatable checklist and test harness for common website failures.",
+            "artifact": {"evidence_class": "MODEL_HYPOTHESIS", "external_research": False},
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "AWAITING_REVIEW"
+
+
+def test_owner_local_dream_artifact_rejected_outside_dream_mode(monkeypatch, tmp_path):
+    machine_id, lifecycle, runtime = setup_owner_worker(monkeypatch, tmp_path)
+    client = TestClient(main.app)
+    response = client.post(
+        f"/api/owner/agents/{machine_id}/dream-artifacts",
+        headers={"X-Federation-Admin": "owner-worker-secret"},
+        json={
+            "artifact_type": "idea", "title": "Idea",
+            "summary": "A short idea outside dream mode.",
+            "artifact": {},
+        },
+    )
+    assert response.status_code == 409
