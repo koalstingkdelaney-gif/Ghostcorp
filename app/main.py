@@ -168,6 +168,10 @@ class ProblemSubmissionReviewIn(BaseModel):
     status: str = Field(pattern=r"^(REVIEWED|ROADMAP|CLOSED)$")
 
 
+class CustomerResearchTaskIn(BaseModel):
+    division_slug: str = Field(min_length=3, max_length=40)
+
+
 @app.post("/api/public/problem-submissions")
 def submit_customer_problem(payload: PublicProblemSubmissionIn, request: Request):
     """Accept a product-problem suggestion without exposing private business records."""
@@ -215,6 +219,46 @@ def review_customer_problem_submission(submission_id: int,
         raise HTTPException(404, str(exc)) from exc
     except FeedbackError as exc:
         raise HTTPException(422, str(exc)) from exc
+
+
+@app.post("/api/customer/problem-submissions/{submission_id}/research",
+          dependencies=[Depends(require_federation_admin)])
+def queue_customer_problem_research(submission_id: int, payload: CustomerResearchTaskIn):
+    """Turn an owner-selected customer problem into a bounded researcher task."""
+    submission = customer_feedback.get(submission_id)
+    if not submission:
+        raise HTTPException(404, "submission not found")
+    if submission["status"] not in {"ROADMAP", "REVIEWED"}:
+        raise HTTPException(409, "review the submission before creating a research task")
+    division = federation.conn.execute(
+        "SELECT slug FROM divisions WHERE slug=?", (payload.division_slug,)
+    ).fetchone()
+    if not division:
+        raise HTTPException(404, "research division not found")
+    # Contact email is deliberately excluded from the agent task.
+    prompt = (
+        "Prepare a customer-problem validation brief using only the supplied "
+        "description and general knowledge. Do not claim to have browsed or "
+        "verified competitors. Separate observed facts from hypotheses. Include: "
+        "customer segments to interview, jobs-to-be-done, current workaround "
+        "hypotheses, competing solution categories to investigate, 8 neutral "
+        "interview questions, a low-cost validation experiment, possible product "
+        "approaches, risks, and what evidence would disprove the idea. Do not "
+        "contact anyone or make purchases.\n\nPROBLEM:\n" + submission["problem"] +
+        "\n\nCONTEXT:\n" + submission["context"]
+    )
+    outcome = agent_runtime.enqueue(
+        "customer-problem-" + str(submission_id) + "-research-v1",
+        payload.division_slug, "researcher", "research_summary",
+        {"privacy_class": "internal", "prompt": prompt, "max_output_tokens": 900,
+         "source_submission_id": submission_id, "tools_enabled": False}
+    )
+    store.log("federation_admin", "customer_research_queued",
+              str(submission_id) + ":" + outcome)
+    return {"outcome": outcome, "mode": "QUEUED_FOR_RESEARCHER",
+            "source_submission_id": submission_id,
+            "contact_data_shared": False,
+            "research_limit": "No live web search or external contact is performed by this task."}
 
 
 @app.get("/health")
