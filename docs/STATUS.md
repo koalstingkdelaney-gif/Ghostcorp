@@ -193,3 +193,14 @@ freshly rerun or independently reverified in this update.
 - **NOT VERIFIED DEPLOYED:** backend hosting, production API, worker processes, contributor execution, malware scanner, owner sign-in, or VR business-system integration.
 - **Website / VR repository:** existing Three.js/WebXR page and in-headset developer workbench are present in the repository. The live cache-busted page previously showed the workbench control; headset entry, controller operation, and direct GitHub publishing from inside Quest are not verified.
 - **No production deployment, DNS change, paid service, contributor execution, customer-data access, or financial action was performed in this increment.**
+
+
+## Department-scoped adaptive VR world learning (2026-11-27)
+
+- Extended `app/agent_world.py` with persistent `world_adaptations` records. Authenticated machine agents can record bounded learning outcomes as declarative changes attached to their own current world zone and registered division.
+- Added idempotency keys scoped to each machine identity, supported adaptation types (knowledge clusters, workspace layout, ambient state, workstation upgrades, display panels), bounded configuration fields, and rejection of arbitrary script/HTML properties.
+- Added machine-authenticated `POST /api/world/learn`; added owner-admin `GET /api/world/adaptations`; the owner world snapshot now includes recent adaptations.
+- Added `tests/test_world_adaptations.py` for zone scoping, idempotency, per-agent event keys, unknown agents, and config bounds.
+- Added the adaptive-world contract and current integration limitations to `docs/AGENT-WORLD.md`.
+- **Not yet connected:** there is no deployed AI worker fleet, production API host, authenticated VR owner session, or Quest-side adaptation renderer. This increment records and exposes real agent-reported changes; it does not yet make the VR scene automatically evolve or imply bots are already learning.
+- Tests have not been run in this environment. A workflow run has not been returned for the test commit; do not treat the tests as passing until CI confirms them.
