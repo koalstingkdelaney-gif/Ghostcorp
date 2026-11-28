@@ -360,3 +360,9 @@ freshly rerun or independently reverified in this update.
 - No Render service was created or repurposed. The current free-service options do not establish the durable writable `/data` volume required for this SQLite application. Do not deploy to ephemeral storage and risk loss of owner sessions, approvals, queue state, customer submissions, and audit records.
 - The connected Supabase account has an organization but no existing project. No database project was created. Creating a new project requires the owner to select/confirm the organization and the backend would still need a durable host plus a reviewed database migration; the current backend uses SQLite.
 - Backend hosting, durable storage, Cloudflare deployment, OAuth secrets, live owner login, Quest hardware testing, and active model compute remain external prerequisites. Paid spend remains $0.
+
+
+### Oracle deployment kit prepared (2026-11-28)
+- Added `infra/oracle/compose.yaml` for the existing FastAPI image with a non-root API container, read-only root filesystem, internal-only API port, persistent host data mount, health check, and Caddy HTTPS origin.
+- Added `infra/oracle/Caddyfile`, placeholder-only `backend.env.example`, and `infra/oracle/README.md` with Oracle Always Free account/VM/volume, firewall, DNS, permissions, secret, proxy, and verification steps.
+- This prepares the deployment artifact only. No Oracle account, VM, volume, DNS record, private secret, Cloudflare Worker, or live backend has been created.
