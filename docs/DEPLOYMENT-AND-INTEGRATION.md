@@ -39,7 +39,9 @@ At minimum:
 - `GUMROAD_ACCESS_TOKEN`, `GUMROAD_PING_SECRET`, and
   `GUMROAD_ALLOWED_PERMALINKS` after the owner configures Gumroad
 - `GUMROAD_SERVICE_PACKAGE_MAP` after the corresponding service products
-  exist in the existing Gumroad store and their permalinks are confirmed
+  exist in the existing Gumroad store and their exact permalinks, raw API
+  amounts and currencies are confirmed (format:
+  `AI Website=permalink:raw-price:USD`)
 
 Never put these values in Git, the static website, VR assets, query strings,
 or user-visible logs.
