@@ -204,3 +204,13 @@ freshly rerun or independently reverified in this update.
 - Added the adaptive-world contract and current integration limitations to `docs/AGENT-WORLD.md`.
 - **Not yet connected:** there is no deployed AI worker fleet, production API host, authenticated VR owner session, or Quest-side adaptation renderer. This increment records and exposes real agent-reported changes; it does not yet make the VR scene automatically evolve or imply bots are already learning.
 - Tests have not been run in this environment. A workflow run has not been returned for the test commit; do not treat the tests as passing until CI confirms them.
+
+
+## Agent lifecycle foundation (2026-11-27)
+
+- Added `app/agent_lifecycle.py` with persistent INITIALIZING / WORKING / SLEEPING / DREAMING / WAKING / PAUSED states and explicit legal transitions.
+- Added authenticated agent endpoints for lifecycle state, transitions, and bounded dream-artifact submissions; owner-admin endpoints expose lifecycle status and review inbox.
+- Dream artifacts remain AWAITING_REVIEW. The dream system cannot self-approve production changes.
+- Updated task claiming so agents with a registered non-WORKING lifecycle state cannot claim ordinary business tasks.
+- Added `tests/test_agent_lifecycle.py` for the lifecycle cycle, invalid transitions, dream-only artifact submission, payload limits, and owner-review queue.
+- This is coordination and persistence only: no deployed AI workers, autonomous model self-training, dream-realm renderer, isolated dream execution host, or production deployment has been verified. Tests have not been run here.
