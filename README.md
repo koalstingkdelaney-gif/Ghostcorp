@@ -28,8 +28,22 @@ company's existing live rate card.
 - **Proposals** — drafts generated only from the existing rate card. Drafts
   only; sending stays with the existing gated pipelines.
 - **Calling/SMS** — adapter interface present and **disabled by design**.
-- **Payments** — disabled until the owner completes provider onboarding in
-  the provider's own dashboard. No card data is ever collected by this code.
+- **Payments** — checkout remains on the existing Gumroad store. A read-only
+  Gumroad Ping verifier can confirm sale IDs through Gumroad's API and record
+  idempotent sale/refund events after private provider configuration. It does
+  not move money, change payouts, or replace Gumroad delivery.
+- **Owner sign-in** — optional GitHub OAuth with an exact allowed account and
+  verified owner email, secure session cookies and CSRF protection. It is
+  implemented in code but requires private OAuth configuration and deployment.
+- **Customer workflow** — public problem suggestions, owner-reviewed researcher
+  tasks, website audit requests, fixed-rate proposals, one-time customer
+  approval links, and a verified Gumroad payment gate before delivery.
+- **Product pipeline** — owner-created product drafts, recorded validation
+  evidence, and approval before a listing is prepared. Product files and
+  publication are still manual.
+- **VR local AI** — a separate WebGPU local chat page and owner-authenticated
+  researcher worker for the browser tab. It is not a background/24-hour worker
+  and has not been tested on Quest 3 hardware.
 
 ## Run it
 
@@ -66,7 +80,11 @@ autonomous or revenue-generating until those capabilities are proven end-to-end.
 - [`docs/LOCAL-MODEL-GATEWAY.md`](docs/LOCAL-MODEL-GATEWAY.md): guarded, disabled-by-default local inference adapter; no cloud fallback or paid API.
 - [`docs/AGENT-WORLD.md`](docs/AGENT-WORLD.md): persistent VR agent identities, daily routines, authenticated presence, and security boundaries.
 - [`docs/MILLION-AGENT-WORLD.md`](docs/MILLION-AGENT-WORLD.md): target architecture for a million persistent agents, pooled workers, memory, VR scaling, budgets, and staged load tests.
-- [`docs/OWNER-SIGN-IN.md`](docs/OWNER-SIGN-IN.md): private owner email sign-in requirements and deployment prerequisites.
+- [`docs/OWNER-SIGN-IN.md`](docs/OWNER-SIGN-IN.md): verified GitHub OAuth owner identity, session cookies, CSRF and activation prerequisites.
+- [`docs/DEPLOYMENT-AND-INTEGRATION.md`](docs/DEPLOYMENT-AND-INTEGRATION.md): persistent backend deployment, same-origin routing and live prerequisites.
+- [`docs/GUMROAD-INTEGRATION.md`](docs/GUMROAD-INTEGRATION.md): existing Gumroad checkout, sale verification, webhook and payment mapping.
+- [`docs/VR-LOCAL-AI-RUNTIME.md`](docs/VR-LOCAL-AI-RUNTIME.md): local WebGPU model, Quest worker behavior and hardware test gates.
+- [`docs/CUSTOMER-TO-PRODUCT-PIPELINE.md`](docs/CUSTOMER-TO-PRODUCT-PIPELINE.md): customer problems, research queue, product validation and service delivery.
 - [`docs/OWNER-API-SECURITY.md`](docs/OWNER-API-SECURITY.md): owner-admin protection for private business API routes.
 - [`docs/STARTUP-MODEL-FLEET.md`](docs/STARTUP-MODEL-FLEET.md): free/open-source model discovery, staged startup, capability routing, resource limits, and safety checks.
 - [`docs/GHOSTCORP-VIRTUAL-OPERATING-SYSTEM.md`](docs/GHOSTCORP-VIRTUAL-OPERATING-SYSTEM.md): unified VR-centered business OS specification.
