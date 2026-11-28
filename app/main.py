@@ -89,7 +89,7 @@ def owner_github_start():
     except owner_auth.OwnerAuthUnavailable as exc:
         raise HTTPException(503, str(exc)) from exc
     response = RedirectResponse(url, status_code=302)
-    response.set_cookie(owner_auth.STATE_COOKIE if hasattr(owner_auth, "STATE_COOKIE") else "ghostcorp_oauth_state",
+    response.set_cookie(owner_auth.STATE_COOKIE,
                         state_cookie, max_age=600, httponly=True, secure=True,
                         samesite="lax", path="/")
     return response
