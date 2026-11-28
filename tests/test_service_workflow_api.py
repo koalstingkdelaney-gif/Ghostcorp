@@ -62,3 +62,12 @@ def test_website_audit_to_customer_approved_paid_delivery_api(monkeypatch):
                                   "deliverable_url": "https://deliverables.example/local-shop"})
     assert completed.status_code == 200
     assert completed.json()["status"] == "DELIVERED"
+
+    ledger.conn.execute("UPDATE gumroad_verified_sales SET amount_raw='1' WHERE sale_id='service-sale-1'")
+    ledger.conn.commit()
+    wrong_amount = client.post(
+        f"/api/service/requests/{request_id}/delivery",
+        headers=headers,
+        json={"status": "IN_PROGRESS", "payment_sale_id": "service-sale-1"},
+    )
+    assert wrong_amount.status_code == 409
