@@ -22,12 +22,14 @@ from .store import Store
 from .customer_feedback import CustomerFeedback, FeedbackError
 from .product_pipeline import ProductPipeline, ProductPipelineError
 from .gumroad import GumroadSales, GumroadError
+from .service_workflow import WebsiteServiceWorkflow, ServiceWorkflowError
 
 settings = load_settings()
 store = Store(settings.db_path)
 customer_feedback = CustomerFeedback(settings.db_path)
 product_pipeline = ProductPipeline(settings.db_path)
 gumroad_sales = GumroadSales(settings.db_path)
+service_workflow = WebsiteServiceWorkflow(settings.db_path)
 governor = SpendGovernor(settings.spend_cap_usd)
 comms = DisabledCommsProvider(settings.calling_enabled, settings.sms_enabled)
 
@@ -195,6 +197,27 @@ class ProductValidationIn(BaseModel):
 
 class ProductDecisionIn(BaseModel):
     decision: str = Field(pattern=r"^(APPROVED_FOR_LISTING|REJECTED)$")
+
+
+class WebsiteServiceRequestIn(BaseModel):
+    business_name: str = Field(min_length=2, max_length=100)
+    website_url: str = Field(min_length=10, max_length=2048)
+    contact_email: str = Field(min_length=5, max_length=254)
+    package: str = Field(min_length=3, max_length=80)
+    contact_permission: bool = False
+    company_fax: str = Field(default="", max_length=120)
+
+
+class ServiceCustomerDecisionIn(BaseModel):
+    token: str = Field(min_length=20, max_length=200)
+    decision: str = Field(pattern=r"^(ACCEPTED|DECLINED)$")
+
+
+class ServiceDeliveryIn(BaseModel):
+    status: str = Field(pattern=r"^(IN_PROGRESS|DELIVERED)$")
+    payment_sale_id: str = Field(min_length=1, max_length=180)
+    notes: str = Field(default="", max_length=2000)
+    deliverable_url: str = Field(default="", max_length=2048)
 
 
 @app.post("/api/public/problem-submissions")
@@ -378,6 +401,139 @@ def gumroad_verified_sales(limit: int = 100):
             "items": gumroad_sales.list(limit),
             "amount_units": "GUMROAD_API_RAW_UNCONVERTED",
             "note": "Only provider-verified sales are shown; amounts are preserved raw until the provider's currency-unit contract is confirmed."}
+
+
+@app.post("/api/public/website-audit-requests")
+def create_website_audit_request(payload: WebsiteServiceRequestIn, request: Request):
+    guard_mutation()
+    if payload.company_fax.strip():
+        return {"accepted": True}
+    if not payload.contact_permission:
+        raise HTTPException(422, "explicit permission to contact you about this request is required")
+    rate_secret = os.environ.get("PUBLIC_FEEDBACK_RATE_SECRET", "")
+    if not rate_secret or len(rate_secret) < 32:
+        raise HTTPException(503, "website audit request intake is not configured")
+    client_ip = request.client.host if request.client else "unknown"
+    try:
+        fingerprint = service_workflow.fingerprint(client_ip, rate_secret)
+        item = service_workflow.create_request(
+            payload.business_name, payload.website_url, payload.contact_email,
+            payload.package, fingerprint, set(PACKAGES.keys()))
+        store.log("public", "website_audit_request_received", str(item["id"]))
+        return {"accepted": True, "request_id": item["id"],
+                "message": "Your request has been received. We will review it before any contact or work."}
+    except ServiceWorkflowError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.get("/api/service/requests",
+         dependencies=[Depends(require_federation_admin)])
+def list_website_service_requests(limit: int = 100):
+    return {"items": service_workflow.list(limit)}
+
+
+@app.post("/api/service/requests/{request_id}/audit",
+          dependencies=[Depends(require_federation_admin)])
+def audit_website_service_request(request_id: int):
+    guard_mutation()
+    item = service_workflow.get(request_id)
+    if not item:
+        raise HTTPException(404, "service request not found")
+    try:
+        audit = audit_website(item["website_url"])
+        result = service_workflow.record_audit(request_id, audit)
+        store.log("federation_admin", "website_service_audited", str(request_id))
+        return result
+    except ServiceWorkflowError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.post("/api/service/requests/{request_id}/proposal",
+          dependencies=[Depends(require_federation_admin)])
+def draft_website_service_proposal(request_id: int):
+    guard_mutation()
+    item = service_workflow.get(request_id)
+    if not item:
+        raise HTTPException(404, "service request not found")
+    try:
+        proposal = build_proposal({"name": item["business_name"], "service": item["package"]},
+                                  item["audit"])
+        result = service_workflow.record_proposal(request_id, proposal)
+        store.log("federation_admin", "website_service_proposal_drafted", str(request_id))
+        return result
+    except ServiceWorkflowError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.post("/api/service/requests/{request_id}/approval-link",
+          dependencies=[Depends(require_federation_admin)])
+def issue_website_service_approval(request_id: int):
+    guard_mutation()
+    try:
+        item, token = service_workflow.issue_customer_approval(request_id)
+        approval_url = owner_auth.site_origin() + "/service-approval.html?token=" + token
+        store.log("federation_admin", "website_service_approval_link_issued", str(request_id))
+        return {"request_id": request_id, "approval_url": approval_url,
+                "token": token, "expires_at": item["token_expires_at"],
+                "delivery": "NOT_SENT_OWNER_MUST_SHARE_LINK",
+                "payment": "CUSTOMER_CHECKOUT_AND_VERIFIED_GUMROAD_SALE_REQUIRED"}
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ServiceWorkflowError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.get("/api/public/service-approvals/{token}")
+def get_website_service_approval(token: str):
+    try:
+        return service_workflow.get_public_approval(token)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@app.post("/api/public/service-approvals")
+def decide_website_service_approval(payload: ServiceCustomerDecisionIn):
+    try:
+        return service_workflow.customer_decide(payload.token, payload.decision)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ServiceWorkflowError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.post("/api/service/requests/{request_id}/delivery",
+          dependencies=[Depends(require_federation_admin)])
+def update_website_service_delivery(request_id: int, payload: ServiceDeliveryIn):
+    guard_mutation()
+    item = service_workflow.get(request_id)
+    if not item:
+        raise HTTPException(404, "service request not found")
+    raw_map = os.environ.get("GUMROAD_SERVICE_PACKAGE_MAP", "")
+    package_map = {}
+    for entry in raw_map.split(";"):
+        if "=" in entry:
+            key, value = entry.split("=", 1)
+            package_map[key.strip()] = value.strip()
+    expected_permalink = package_map.get(item["package"])
+    if not expected_permalink:
+        raise HTTPException(503, "verified Gumroad product mapping is not configured for this service package")
+    sale = gumroad_sales.conn.execute(
+        "SELECT sale_id,product_permalink,status FROM gumroad_verified_sales WHERE sale_id=?",
+        (payload.payment_sale_id,),
+    ).fetchone()
+    if not sale or sale["status"] != "PAID_VERIFIED" or sale["product_permalink"] != expected_permalink:
+        raise HTTPException(409, "matching provider-verified Gumroad payment is required before delivery")
+    try:
+        result = service_workflow.update_delivery(
+            request_id, payload.status, payload.notes, payload.deliverable_url,
+            payload.payment_sale_id)
+        store.log("federation_admin", "website_service_delivery_updated",
+                  str(request_id) + ":" + payload.status)
+        return result
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ServiceWorkflowError as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 @app.get("/health")
@@ -1240,6 +1396,7 @@ def owner_action_center():
         "agents": owner_list_agents(),
         "customer_problems": {"new": customer_feedback.list("NEW", 50),
                               "roadmap": customer_feedback.list("ROADMAP", 50)},
+        "website_service_requests": {"items": service_workflow.list(100)},
         "product_drafts": {"items": product_pipeline.list("ALL", 100)},
         "dream_artifacts": {"items": agent_lifecycle.artifacts("AWAITING_REVIEW", 100)},
         "artifacts": artifact_quarantine.list(100),
