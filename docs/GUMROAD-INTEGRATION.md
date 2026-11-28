@@ -39,9 +39,11 @@ integration test. Revenue reports must not sum or display it as dollars yet.
 - `GUMROAD_ALLOWED_PERMALINKS`: comma-separated exact product permalinks
   that GhostCorp intends to track.
 - `GUMROAD_SERVICE_PACKAGE_MAP`: semicolon-separated package mappings, for
-  example `AI Website=confirmed-permalink;AI Front Desk=confirmed-permalink`.
-  Set only after each corresponding service product exists in the store and
-  the exact permalink is checked.
+  as `AI Website=confirmed-permalink:raw-price:USD;AI Front Desk=confirmed-permalink:raw-price:USD`.
+  The raw amount must exactly match Gumroad's verified API `price` field;
+  GhostCorp deliberately does not convert units. Set only after each
+  corresponding service product exists in the store and a real test sale
+  confirms its exact permalink, raw amount and currency.
 
 The existing public site currently references these Gumroad permalinks:
 `ihqce`, `lttjbc`, `tsrwbt`, `hdigmr`, `yzbumc`, `bbxnne`,
