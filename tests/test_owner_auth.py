@@ -9,6 +9,7 @@ def configure_owner(monkeypatch):
     monkeypatch.setenv("GITHUB_OAUTH_CLIENT_ID", "client-id")
     monkeypatch.setenv("GITHUB_OAUTH_CLIENT_SECRET", "client-secret")
     monkeypatch.setenv("OWNER_GITHUB_LOGIN", "koalstingkdelaney-gif")
+    monkeypatch.setenv("GHOSTCORP_OWNER_EMAIL", "owner@example.com")
     monkeypatch.setenv("OWNER_SESSION_SECRET", "test-session-secret-that-is-long-enough")
     monkeypatch.setenv("GITHUB_OAUTH_REDIRECT_URI", "https://api.ghostcorpnet.com/auth/github/callback")
     monkeypatch.setenv("GHOSTCORP_SITE_ORIGIN", "https://ghostcorpnet.com")
@@ -27,7 +28,7 @@ def make_session():
 
 def test_owner_oauth_is_locked_until_provider_configuration(monkeypatch):
     for key in ("GITHUB_OAUTH_CLIENT_ID", "GITHUB_OAUTH_CLIENT_SECRET",
-                "OWNER_GITHUB_LOGIN", "OWNER_SESSION_SECRET",
+                "OWNER_GITHUB_LOGIN", "GHOSTCORP_OWNER_EMAIL", "OWNER_SESSION_SECRET",
                 "GITHUB_OAUTH_REDIRECT_URI", "GHOSTCORP_SITE_ORIGIN"):
         monkeypatch.delenv(key, raising=False)
     client = TestClient(main.app)
