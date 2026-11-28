@@ -254,3 +254,75 @@ freshly rerun or independently reverified in this update.
 - This is an API admin gate, not the finished owner email sign-in or browser
   session bridge. A backend deployment must configure the secret privately
   before private admin routes can be used.
+
+
+## Customer, commerce, owner and VR integration increment (2026-11-28)
+
+### Owner access and security
+- Added GitHub OAuth owner sign-in with an exact account allowlist and a
+  separately verified owner email using the `user:email` scope.
+- Added signed eight-hour HttpOnly/Secure/SameSite session cookies, CSRF
+  protection, exact Origin checks, and server-side session revocation on
+  logout. OAuth client values, owner email and HMAC secret remain private
+  deployment settings.
+- Added owner-authenticated local agent provisioning, lifecycle transitions,
+  task claim/completion, task-result listing, and dream-artifact submission.
+  The browser worker does not store machine tokens.
+
+### Customer workflow and product discovery
+- Added privacy-minimal public problem suggestions with optional contact
+  permission, HMAC-keyed rate limiting, and no raw IP storage.
+- Added owner review states and a research-task queue. Customer email is
+  excluded from researcher task payloads. The current task creates a
+  validation brief from supplied context and general knowledge; no live web
+  research provider is connected.
+- Added a public HTTPS website-audit request flow, owner-triggered
+  SSRF-hardened/robots-aware audit, fixed-rate proposal draft, single-use
+  customer approval link, and a delivery gate requiring a matching
+  provider-verified Gumroad sale and configured package permalink.
+- Added owner product drafts, evidence-recorded validation checks, and
+  approval gating. Product artifact generation and automatic publication
+  remain future work.
+
+### Gumroad
+- Added a read-only Gumroad sale verifier that checks Ping sale IDs against
+  Gumroad's authenticated sales API, enforces a product permalink allowlist,
+  records idempotent sale/refund events, and avoids storing buyer email or
+  card data.
+- Raw provider amount values are stored without currency-unit conversion.
+  Live API credentials, Ping secret, allowlist, service-package mappings,
+  payouts and live reconciliation remain unconfigured.
+
+### VR and local inference
+- Added standalone local WebGPU chat and a dedicated Web Worker using a
+  pinned WebLLM runtime and the SmolLM2 360M Q4F32 model.
+- Added an owner-authenticated browser researcher that can process queued
+  `research_summary` tasks while the page remains open, then sleep.
+- Added a bounded manual dream session: SLEEPING -> DREAMING -> WAKING ->
+  WORKING, producing a reviewable product-opportunity artifact. It does not
+  self-train, execute code, publish or contact customers.
+- Added a private VR agent-presence check and links to the owner Action Center,
+  local AI chat, customer request and approval pages.
+
+### Verification
+- GitHub Actions run `46098281029` on backend commit
+  `d81d400108d9b04f7a28e1dd326a87f2f385aaba` passed **147 tests** and built
+  the backend Docker image successfully. One non-fatal Starlette/httpx
+  TestClient deprecation warning remains.
+- The VR/static-site JavaScript modules were syntax-checked in this update.
+  GitHub Pages build/deployment for the static site must be checked against
+  its latest commit separately.
+- No Quest 3 hardware run, WebGPU model initialization, OAuth login, live
+  Gumroad Ping, production backend deployment, persistent-volume restore,
+  or customer payment/delivery has been performed.
+
+### Deployment state
+- The backend Dockerfile now uses `/data/agency.db` and declares `/data` as
+  a volume. CI builds the image successfully.
+- No backend hosting provider, persistent volume, production secrets,
+  reverse proxy, DNS/TLS route, or live API URL has been configured.
+- Static GitHub Pages deployment is separate from backend deployment.
+  Relative `/api` and `/auth` browser calls require the same-origin proxy
+  described in `docs/DEPLOYMENT-AND-INTEGRATION.md`.
+- Paid spend remains $0 by default. Do not deploy to ephemeral storage or
+  enable paid hosting without explicit owner approval.
