@@ -72,3 +72,39 @@ def test_dream_artifacts_wait_for_owner_review(tmp_path):
         "A candidate skill for evaluation.", {})
     assert len(lifecycle.artifacts("AWAITING_REVIEW")) == 1
     assert lifecycle.artifacts("APPROVED") == []
+
+
+def test_dream_realm_business_work_types_and_owner_review(tmp_path):
+    lifecycle = AgentLifecycle(str(tmp_path / "lifecycle.db"))
+    lifecycle.register("agent-business")
+    lifecycle.transition("agent-business", "WORKING")
+    lifecycle.transition("agent-business", "SLEEPING")
+    lifecycle.transition("agent-business", "DREAMING")
+    item = lifecycle.add_dream_artifact(
+        "agent-business", "research-lab", "customer-acquisition-plan",
+        "Qualified customer discovery plan",
+        "Research public market segments and propose a compliant discovery approach.",
+        {"market_hypothesis": "small businesses", "outbound_enabled": False})
+    assert item["status"] == "AWAITING_REVIEW"
+    reviewed = lifecycle.review_artifact(item["id"], "APPROVED")
+    assert reviewed["status"] == "APPROVED"
+    assert reviewed["promotion"] == "NOT_PERFORMED"
+    try:
+        lifecycle.review_artifact(item["id"], "REJECTED")
+    except ValueError as exc:
+        assert "already been reviewed" in str(exc)
+    else:
+        raise AssertionError("review decision must be immutable")
+
+
+def test_dream_business_type_rejected_outside_dream_mode(tmp_path):
+    lifecycle = AgentLifecycle(str(tmp_path / "lifecycle.db"))
+    lifecycle.register("agent-business-2")
+    try:
+        lifecycle.add_dream_artifact(
+            "agent-business-2", "research-lab", "business-model",
+            "Business model", "Draft", {})
+    except ValueError as exc:
+        assert "only be submitted while DREAMING" in str(exc)
+    else:
+        raise AssertionError("business research is only accepted in dream mode")
