@@ -5,7 +5,8 @@ endpoint that can fire. Proposals are drafts for the existing gated
 pipelines. Calling/SMS endpoints exist only to return the disabled state.
 """
 from fastapi import FastAPI, HTTPException, Header, Depends, Cookie, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
+from urllib.parse import parse_qs
 from pydantic import BaseModel, Field
 
 from . import __version__
@@ -20,11 +21,13 @@ from .scoring import score_lead
 from .store import Store
 from .customer_feedback import CustomerFeedback, FeedbackError
 from .product_pipeline import ProductPipeline, ProductPipelineError
+from .gumroad import GumroadSales, GumroadError
 
 settings = load_settings()
 store = Store(settings.db_path)
 customer_feedback = CustomerFeedback(settings.db_path)
 product_pipeline = ProductPipeline(settings.db_path)
+gumroad_sales = GumroadSales(settings.db_path)
 governor = SpendGovernor(settings.spend_cap_usd)
 comms = DisabledCommsProvider(settings.calling_enabled, settings.sms_enabled)
 
@@ -339,6 +342,42 @@ def decide_product_draft(product_id: int, payload: ProductDecisionIn):
         raise HTTPException(404, str(exc)) from exc
     except ProductPipelineError as exc:
         raise HTTPException(409, str(exc)) from exc
+
+
+@app.post("/webhooks/gumroad/{ping_secret}")
+async def gumroad_ping(ping_secret: str, request: Request):
+    """Verify Gumroad Ping events against the authenticated Gumroad sales API."""
+    _, configured_secret, _ = gumroad_sales.config()
+    if not configured_secret or len(configured_secret) < 32:
+        raise HTTPException(503, "Gumroad Ping secret is not configured")
+    if not _secrets.compare_digest(ping_secret, configured_secret):
+        raise HTTPException(404, "not found")
+    raw = await request.body()
+    if len(raw) > 16384:
+        raise HTTPException(413, "Ping payload too large")
+    try:
+        parsed = parse_qs(raw.decode("utf-8"), keep_blank_values=True, max_num_fields=80)
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise HTTPException(400, "invalid form payload") from exc
+    ping = {key: values[0] for key, values in parsed.items() if values}
+    try:
+        result = gumroad_sales.verify_and_record(ping)
+        if result["outcome"] == "ignored_unsupported_event":
+            return Response(status_code=202)
+        store.log("gumroad", "verified_sale_event", result["status"] + ":" + result["sale_id"])
+        return {"received": True, **result}
+    except GumroadError as exc:
+        status = 503 if not gumroad_sales.configured() else 409
+        raise HTTPException(status, str(exc)) from exc
+
+
+@app.get("/api/gumroad/sales",
+         dependencies=[Depends(require_federation_admin)])
+def gumroad_verified_sales(limit: int = 100):
+    return {"configured": gumroad_sales.configured(),
+            "items": gumroad_sales.list(limit),
+            "amount_units": "GUMROAD_API_RAW_UNCONVERTED",
+            "note": "Only provider-verified sales are shown; amounts are preserved raw until the provider's currency-unit contract is confirmed."}
 
 
 @app.get("/health")
@@ -1208,7 +1247,7 @@ def owner_action_center():
             "owner_email_sign_in": owner_auth.configured(),
             "live_workers": False,
             "local_model_backend": "DISABLED_UNLESS_CONFIGURED",
-            "gumroad_live_verification": False,
+            "gumroad_live_verification": gumroad_sales.configured(),
             "production_deployment": False,
         },
     }
