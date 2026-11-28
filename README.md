@@ -109,3 +109,5 @@ autonomous or revenue-generating until those capabilities are proven end-to-end.
 
 - [Dream-realm business research, product pipeline, and owner approval](docs/AGENT-WORLD.md)
 - [GhostCorp GitHub organization and product distribution plan](docs/GITHUB-ORGANIZATION-AND-COMMERCE.md)
+
+- [Jarvis public presence, process publishing, advertising, and business governance](docs/JARVIS_PUBLIC_PRESENCE_AND_BUSINESS.md) — requirements and authorization boundaries; not a claim of live social integrations.
