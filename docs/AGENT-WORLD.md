@@ -66,3 +66,14 @@ Supported adaptation categories are `knowledge-cluster`, `workspace-layout`, `am
 Owner-only `GET /api/world/adaptations` and `GET /api/world/snapshot` expose the change history for inspection. The snapshot includes recent adaptations so an owner interface can highlight the exact areas that changed. The current backend records these changes; it does not yet automatically render them in the Quest scene. That requires the authenticated owner session bridge and a VR client adapter. The existing static website must never contain the federation admin token or machine bearer tokens.
 
 This is the authenticated event and persistence layer, not autonomous learning by itself. Real model workers must call the endpoint with evidence-backed learning outcomes. Heartbeats and simulated routines do not count as learning. No current worker fleet is deployed, so live changes will not appear until workers, hosting, and the secure VR session are connected.
+
+
+## Agent wake/work/sleep/dream lifecycle
+
+Agents have a persistent lifecycle state: `INITIALIZING`, `WORKING`, `SLEEPING`, `DREAMING`, `WAKING`, or `PAUSED`. The intended startup sequence loads identity, role, memory, goals, skill set, safety policy and current task context before entering work mode. Normal task claims are denied when a registered lifecycle state is not `WORKING`.
+
+A work cycle can transition to sleep, then to a restricted dream phase. Dream outputs are bounded structured artifacts (ideas, research, prototype plans, skill proposals and world-change proposals) saved as `AWAITING_REVIEW`. They are not automatically merged into production memory, code, world state, or business operations. On waking, an agent returns to work and reviews its previous cycle's discoveries. Owner review is required before a dream artifact can become an approved business or production change.
+
+Endpoints: machine-authenticated `GET /api/lifecycle/me`, `POST /api/lifecycle/transition`, and `POST /api/lifecycle/dream-artifacts`; owner-admin `GET /api/lifecycle/status` and `GET /api/lifecycle/dream-artifacts`.
+
+**Dream realm limitation:** this increment provides lifecycle coordination and a durable dream-artifact inbox. It does not yet provide a separate executable VR dream world, an always-on scheduler, model self-training, persistent autonomous inference, or an isolated dream-code execution environment. Those require real workers, a hardened sandbox runner, a secure owner session, and deployment. Never run dream-generated code in production or give the dream realm live credentials, customer records, payment tools, or unrestricted network access.
