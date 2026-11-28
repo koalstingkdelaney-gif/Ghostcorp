@@ -62,3 +62,15 @@ def test_expired_lease_retries_then_dead_letters(tmp_path):
     runtime.conn.commit()
     assert runtime.claim(agent) is None
     assert runtime.status()["counts"]["dead_letter"] == 1
+
+
+def test_registered_agent_must_explicitly_enter_working_before_claim(tmp_path):
+    from app.agent_lifecycle import AgentLifecycle
+    runtime, token = setup(tmp_path)
+    agent = runtime.authenticate(token)
+    lifecycle = AgentLifecycle(str(tmp_path / "ghostcorp.db"))
+    lifecycle.register(agent["machine_id"])
+    runtime.enqueue("task-lifecycle-gate", "research-lab", "researcher", "research", {})
+    assert runtime.claim(agent) is None
+    lifecycle.transition(agent["machine_id"], "WORKING", goal="Startup complete")
+    assert runtime.claim(agent)["task_key"] == "task-lifecycle-gate"
