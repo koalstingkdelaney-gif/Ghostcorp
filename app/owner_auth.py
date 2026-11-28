@@ -32,6 +32,7 @@ def _settings():
         "client_id": os.environ.get("GITHUB_OAUTH_CLIENT_ID", ""),
         "client_secret": os.environ.get("GITHUB_OAUTH_CLIENT_SECRET", ""),
         "owner_login": os.environ.get("OWNER_GITHUB_LOGIN", "").strip().lower(),
+        "owner_email": os.environ.get("GHOSTCORP_OWNER_EMAIL", "").strip().lower(),
         "session_secret": os.environ.get("OWNER_SESSION_SECRET", ""),
         "redirect_uri": os.environ.get("GITHUB_OAUTH_REDIRECT_URI", ""),
         "site_origin": os.environ.get("GHOSTCORP_SITE_ORIGIN", "").rstrip("/"),
@@ -40,7 +41,7 @@ def _settings():
 
 def configured() -> bool:
     s = _settings()
-    return all(s[k] for k in ("client_id", "client_secret", "owner_login",
+    return all(s[k] for k in ("client_id", "client_secret", "owner_login", "owner_email",
                                "session_secret", "redirect_uri", "site_origin"))
 
 
@@ -81,7 +82,7 @@ def issue_state() -> tuple[str, str]:
     params = {
         "client_id": s["client_id"],
         "redirect_uri": s["redirect_uri"],
-        "scope": "read:user",
+        "scope": "read:user user:email",
         "state": state,
         "allow_signup": "false",
     }
@@ -115,9 +116,22 @@ def complete_login(code: str, state: str, state_cookie: str) -> tuple[str, str]:
         )
         user_response.raise_for_status()
         user = user_response.json()
+        emails_response = client.get(
+            "https://api.github.com/user/emails",
+            headers={"Authorization": "Bearer " + access_token,
+                     "Accept": "application/vnd.github+json"},
+        )
+        emails_response.raise_for_status()
+        emails = emails_response.json()
     login = str(user.get("login", "")).lower()
-    if not login or not hmac.compare_digest(login, s["owner_login"]):
-        raise PermissionError("this GitHub account is not authorized as the GhostCorp owner")
+    verified_owner_email = any(
+        isinstance(item, dict)
+        and str(item.get("email", "")).lower() == s["owner_email"]
+        and item.get("verified") is True
+        for item in emails if isinstance(emails, list)
+    )
+    if not login or not hmac.compare_digest(login, s["owner_login"]) or not verified_owner_email:
+        raise PermissionError("the GitHub account and verified owner email do not match the configured owner")
     csrf = secrets.token_urlsafe(32)
     session = _sign({"sub": login, "csrf": csrf,
                      "exp": int(time.time()) + SESSION_TTL}, s["session_secret"])
