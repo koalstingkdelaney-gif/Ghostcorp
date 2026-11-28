@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p "$RUNNER_TEMP/ghostcorp-smoke-data"
-          docker run -d --rm --stop-timeout 5 --name ghostcorp-backend-smoke \
+          docker run -d --stop-timeout 5 --name ghostcorp-backend-smoke \
             -p 8765:8000 \
             -e PORT=8000 \
             -v "$RUNNER_TEMP/ghostcorp-smoke-data:/data" \
@@ -53,10 +53,14 @@ jobs:
           for attempt in {1..40}; do
             if curl --connect-timeout 1 --max-time 2 --fail --silent http://127.0.0.1:8765/health; then
               docker stop --time 5 ghostcorp-backend-smoke
+              docker rm ghostcorp-backend-smoke
               exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' ghostcorp-backend-smoke 2>/dev/null || echo false)" != "true" ]; then
+              break
             fi
             sleep 1
           done
-          docker logs ghostcorp-backend-smoke
-          docker kill ghostcorp-backend-smoke || true
+          docker logs ghostcorp-backend-smoke || true
+          docker rm -f ghostcorp-backend-smoke || true
           exit 1
