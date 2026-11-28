@@ -16,12 +16,11 @@ from app.model_gateway import LocalModelGateway
 from app.worker import run_once
 
 LOG = logging.getLogger("ghostcorp.worker")
-_STOP = False
+_STOP = threading.Event()
 
 
 def _stop(_signum, _frame):
-    global _STOP
-    _STOP = True
+    _STOP.set()
 
 
 def positive_int(name: str, default: int, minimum: int, maximum: int,
@@ -71,12 +70,12 @@ def main() -> int:
     backoff = 5
     LOG.info("worker started; max_tasks=%s max_runtime_seconds=%s", max_tasks, max_runtime)
 
-    while not _STOP and completed < max_tasks and time.monotonic() - started < max_runtime:
+    while not _STOP.is_set() and completed < max_tasks and time.monotonic() - started < max_runtime:
         try:
             result = run_once(api_base, token, gateway)
             backoff = 5
             if result.get("outcome") == "idle":
-                time.sleep(idle_sleep)
+                _STOP.wait(idle_sleep)
                 continue
             completed += 1
             # Never log task prompts, customer data, machine tokens or model output.
@@ -85,11 +84,11 @@ def main() -> int:
         except Exception as exc:
             LOG.warning("worker iteration failed (%s); retrying in %ss",
                         type(exc).__name__, backoff)
-            time.sleep(backoff)
+            _STOP.wait(backoff)
             backoff = min(backoff * 2, 300)
 
     LOG.info("worker stopped; tasks_processed=%s stop_requested=%s",
-             completed, _STOP)
+             completed, _STOP.is_set())
     return 0
 
 
