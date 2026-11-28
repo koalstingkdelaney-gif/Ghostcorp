@@ -548,6 +548,76 @@ class TaskCompleteIn(BaseModel):
     result: dict = Field(default_factory=dict)
 
 
+class OwnerAgentIn(BaseModel):
+    machine_id: str = Field(min_length=8, max_length=80)
+
+
+class OwnerTaskCompleteIn(BaseModel):
+    machine_id: str = Field(min_length=8, max_length=80)
+    lease_token: str = Field(min_length=20, max_length=200)
+    result: dict = Field(default_factory=dict)
+
+
+@app.get("/api/owner/agents",
+         dependencies=[Depends(require_federation_admin)])
+def owner_list_agents():
+    result = federation.status()
+    for agent in result["agents"]:
+        agent_lifecycle.register(agent["machine_id"])
+        agent["lifecycle"] = agent_lifecycle.get(agent["machine_id"])
+    return result
+
+
+@app.post("/api/owner/agents/{machine_id}/transition",
+          dependencies=[Depends(require_federation_admin)])
+def owner_transition_agent(machine_id: str, payload: LifecycleTransitionIn):
+    record = federation.conn.execute(
+        "SELECT machine_id FROM machine_agents WHERE machine_id=? AND status='PROVISIONED'",
+        (machine_id,),
+    ).fetchone()
+    if not record:
+        raise HTTPException(404, "provisioned agent not found")
+    agent_lifecycle.register(machine_id)
+    try:
+        result = agent_lifecycle.transition(
+            machine_id, payload.target.upper(), payload.goal, payload.reason)
+        store.log("federation_admin", "owner_agent_transition", machine_id + ":" + result["mode"])
+        return result
+    except (ValueError, LookupError) as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.post("/api/runtime/owner/claim",
+          dependencies=[Depends(require_federation_admin)])
+def owner_runtime_claim(payload: OwnerAgentIn):
+    row = federation.conn.execute(
+        "SELECT machine_id,division_slug,role,status FROM machine_agents "
+        "WHERE machine_id=? AND status='PROVISIONED'", (payload.machine_id,)
+    ).fetchone()
+    if not row:
+        raise HTTPException(404, "provisioned agent not found")
+    task = agent_runtime.claim(dict(row))
+    return task or {"outcome": "no_matching_task"}
+
+
+@app.post("/api/runtime/owner/tasks/{task_id}/complete",
+          dependencies=[Depends(require_federation_admin)])
+def owner_runtime_complete(task_id: int, payload: OwnerTaskCompleteIn):
+    row = federation.conn.execute(
+        "SELECT machine_id,division_slug,role,status FROM machine_agents "
+        "WHERE machine_id=? AND status='PROVISIONED'", (payload.machine_id,)
+    ).fetchone()
+    if not row:
+        raise HTTPException(404, "provisioned agent not found")
+    try:
+        completed = agent_runtime.complete(dict(row), task_id, payload.lease_token, payload.result)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    if not completed:
+        raise HTTPException(409, "task lease invalid, expired, or outside agent division")
+    return {"outcome": "completed"}
+
+
 @app.get("/api/runtime/status")
 def runtime_status():
     return agent_runtime.status()
@@ -1092,6 +1162,7 @@ def owner_action_center():
         "queue": agent_runtime.status(),
         "lifecycle": agent_lifecycle.snapshot(),
         "world": agent_world.snapshot(),
+        "agents": owner_list_agents(),
         "customer_problems": {"new": customer_feedback.list("NEW", 50),
                               "roadmap": customer_feedback.list("ROADMAP", 50)},
         "product_drafts": {"items": product_pipeline.list("ALL", 100)},
