@@ -81,3 +81,36 @@ host, production persistent volume, OAuth credentials, Gumroad token, Ping
 configuration, reverse proxy, or Quest 3 test session has been verified.
 Do not call the backend or VR world fully operational until the above checks
 pass.
+
+
+## Same-origin proxy implementation
+
+A narrowly scoped Cloudflare Worker source is now available at
+`infra/cloudflare/ghostcorp-api-proxy.js`; deployment instructions are in
+`docs/CLOUDFLARE-API-PROXY.md`. Configure Worker routes only for
+`/auth/*`, `/api/*`, `/webhooks/*`, `/health`, and `/ready`, and set
+`BACKEND_ORIGIN` to the verified HTTPS backend origin. Do not route all of
+`ghostcorpnet.com/*` through the Worker, because that would intercept the
+existing static site. The Worker is source-only until the Cloudflare zone,
+secret binding, route attachment, and live health checks are completed.
+
+## Hosting account inspection (2026-11-28)
+
+The connected Render workspace was inspected. It contains free services for
+other repositories, but no service connected to the existing GhostCorp
+backend repository. No service was created or repurposed. A free sleeping
+service with ephemeral filesystem is not acceptable for the current SQLite
+backend: the `/data` volume must survive restarts and deployments. Do not
+proceed on ephemeral storage or select a paid plan without owner approval.
+
+The connected Supabase account has an organization but no existing project.
+No project was created. A persistent Postgres project alone would not host
+the FastAPI application, and the current backend is SQLite-based; any
+Postgres migration must be separately designed, tested, and backed up before
+using it as production storage.
+
+The worker runner `scripts/run_worker_loop.py` is now available for a host
+with a provisioned machine token and local Ollama model. It has bounded task
+and runtime limits, HTTPS enforcement for remote API calls, backoff, and
+graceful shutdown. It is not deployed or running; it cannot execute model
+inference without a host that actually runs Ollama and a compatible model.
