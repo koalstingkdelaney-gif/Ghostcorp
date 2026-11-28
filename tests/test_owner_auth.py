@@ -1,5 +1,7 @@
 import time
 
+import pytest
+
 from fastapi.testclient import TestClient
 
 from app import main, owner_auth
@@ -110,8 +112,8 @@ def test_github_oauth_requires_matching_verified_owner_email(monkeypatch):
 
     configure_owner(monkeypatch)
     monkeypatch.setattr(owner_auth.httpx, "Client", FakeGitHubClient)
-    _, state_cookie = owner_auth.issue_state()
-    state = parse_qs(urlsplit(owner_auth.issue_state()[0]).query)["state"][0]
+    authorize_url, state_cookie = owner_auth.issue_state()
+    state = parse_qs(urlsplit(authorize_url).query)["state"][0]
     session, csrf = owner_auth.complete_login("authorization-code", state, state_cookie)
     parsed = owner_auth.read_session(session)
     assert parsed["sub"] == "koalstingkdelaney-gif"
