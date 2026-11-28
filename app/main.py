@@ -196,6 +196,8 @@ def federation_create_division(payload: DivisionIn):
 def federation_create_agent(payload: MachineAgentIn):
     try:
         result = federation.create_agent(payload.division_slug, payload.role)
+        # Every new identity starts INITIALIZING and must explicitly wake.
+        agent_lifecycle.register(result["machine_id"])
         store.log("federation_admin", "machine_agent_provisioned", result["machine_id"])
         return result  # token is returned once; only its hash is stored
     except (ValueError, LookupError) as exc:
@@ -414,6 +416,10 @@ class DreamArtifactIn(BaseModel):
     artifact: dict = Field(default_factory=dict)
 
 
+class DreamArtifactReviewIn(BaseModel):
+    decision: str = Field(pattern=r"^(APPROVED|REJECTED)$")
+
+
 @app.get("/api/lifecycle/status",
          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
 def lifecycle_status():
@@ -464,6 +470,21 @@ def lifecycle_dream_artifacts(status: str = "AWAITING_REVIEW", limit: int = 100)
     if status not in {"AWAITING_REVIEW", "APPROVED", "REJECTED"}:
         raise HTTPException(422, "invalid artifact review status")
     return {"items": agent_lifecycle.artifacts(status, limit)}
+
+@app.post("/api/lifecycle/dream-artifacts/{artifact_id}/review",
+          dependencies=[__import__("fastapi").Depends(require_federation_admin)])
+def lifecycle_review_dream_artifact(artifact_id: int, payload: DreamArtifactReviewIn):
+    guard_mutation()
+    try:
+        result = agent_lifecycle.review_artifact(artifact_id, payload.decision)
+        store.log("federation_admin", "dream_artifact_review",
+                  str(artifact_id) + ":" + payload.decision)
+        return result
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
 
 
 # Platform expansion: capability tracking and opt-in community compute.
