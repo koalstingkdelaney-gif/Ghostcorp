@@ -647,6 +647,12 @@ def owner_runtime_complete(task_id: int, payload: OwnerTaskCompleteIn):
     return {"outcome": "completed"}
 
 
+@app.get("/api/runtime/owner/tasks",
+         dependencies=[Depends(require_federation_admin)])
+def owner_runtime_tasks(limit: int = 100):
+    return {"items": agent_runtime.tasks(limit)}
+
+
 @app.get("/api/runtime/status")
 def runtime_status():
     return agent_runtime.status()
@@ -1189,6 +1195,7 @@ def owner_action_center():
                    "spent_usd": governor.spent_usd,
                    "payments_mode": settings.payments_mode},
         "queue": agent_runtime.status(),
+        "research_tasks": agent_runtime.tasks(100),
         "lifecycle": agent_lifecycle.snapshot(),
         "world": agent_world.snapshot(),
         "agents": owner_list_agents(),
