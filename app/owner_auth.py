@@ -44,8 +44,11 @@ def _settings():
 
 def configured() -> bool:
     s = _settings()
-    return all(s[k] for k in ("client_id", "client_secret", "owner_login", "owner_email",
-                               "session_secret", "redirect_uri", "site_origin"))
+    return (
+        all(s[k] for k in ("client_id", "client_secret", "owner_login", "owner_email",
+                           "session_secret", "redirect_uri", "site_origin"))
+        and len(s["session_secret"]) >= 32
+    )
 
 
 def _b64(data: bytes) -> str:
