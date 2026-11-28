@@ -552,6 +552,12 @@ class OwnerAgentIn(BaseModel):
     machine_id: str = Field(min_length=8, max_length=80)
 
 
+class OwnerLifecycleTransitionIn(BaseModel):
+    target: str = Field(min_length=3, max_length=20)
+    goal: str = Field(default="", max_length=200)
+    reason: str = Field(default="", max_length=300)
+
+
 class OwnerTaskCompleteIn(BaseModel):
     machine_id: str = Field(min_length=8, max_length=80)
     lease_token: str = Field(min_length=20, max_length=200)
@@ -570,7 +576,7 @@ def owner_list_agents():
 
 @app.post("/api/owner/agents/{machine_id}/transition",
           dependencies=[Depends(require_federation_admin)])
-def owner_transition_agent(machine_id: str, payload: LifecycleTransitionIn):
+def owner_transition_agent(machine_id: str, payload: OwnerLifecycleTransitionIn):
     record = federation.conn.execute(
         "SELECT machine_id FROM machine_agents WHERE machine_id=? AND status='PROVISIONED'",
         (machine_id,),
