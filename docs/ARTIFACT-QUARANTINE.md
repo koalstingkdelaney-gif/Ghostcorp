@@ -39,4 +39,4 @@ Both roots must be pre-created real directories with permissions 0700 or stricte
 
 ## Verification
 
-The automated test suite covers normal text intake, hashing, private file mode, archive/executable flags, traversal, symlinked files/directories, expired workspaces, hard links, size limits and default-deny API behavior. Latest verification: GitHub Actions run 46085364193 on commit 733f125c32af4b3886811d4ee385804755940b01 completed successfully with 96 passed and 1 non-fatal deprecation warning.
+The automated test suite covers normal text intake, hashing, private file mode, archive/executable flags, traversal, symlinked files/directories, expired workspaces, hard links, size limits and default-deny API behavior. Latest verification: GitHub Actions run 46085467468 on commit 4029d30babb3c5f7b940c5b3caa4540cee881dc3 completed successfully with 96 passed and 1 non-fatal deprecation warning.
