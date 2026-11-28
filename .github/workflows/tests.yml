@@ -45,6 +45,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p "$RUNNER_TEMP/ghostcorp-smoke-data"
+          chmod 777 "$RUNNER_TEMP/ghostcorp-smoke-data"
           docker run -d --stop-timeout 5 --name ghostcorp-backend-smoke \
             -p 8765:8000 \
             -e PORT=8000 \
