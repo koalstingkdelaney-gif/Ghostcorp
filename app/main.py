@@ -19,10 +19,12 @@ from .proposals import PACKAGES, build_proposal
 from .scoring import score_lead
 from .store import Store
 from .customer_feedback import CustomerFeedback, FeedbackError
+from .product_pipeline import ProductPipeline, ProductPipelineError
 
 settings = load_settings()
 store = Store(settings.db_path)
 customer_feedback = CustomerFeedback(settings.db_path)
+product_pipeline = ProductPipeline(settings.db_path)
 governor = SpendGovernor(settings.spend_cap_usd)
 comms = DisabledCommsProvider(settings.calling_enabled, settings.sms_enabled)
 
@@ -172,6 +174,26 @@ class CustomerResearchTaskIn(BaseModel):
     division_slug: str = Field(min_length=3, max_length=40)
 
 
+class ProductDraftIn(BaseModel):
+    source_submission_id: int = Field(default=0, ge=0)
+    title: str = Field(min_length=4, max_length=120)
+    problem: str = Field(min_length=20, max_length=2000)
+    audience: str = Field(min_length=5, max_length=300)
+    solution: str = Field(min_length=20, max_length=2000)
+    description: str = Field(min_length=40, max_length=5000)
+    format: str = Field(min_length=2, max_length=20)
+    proposed_price_cents: int = Field(default=0, ge=0, le=1000000)
+
+
+class ProductValidationIn(BaseModel):
+    checks: list[dict] = Field(min_length=3, max_length=20)
+    evidence_summary: str = Field(min_length=20, max_length=1500)
+
+
+class ProductDecisionIn(BaseModel):
+    decision: str = Field(pattern=r"^(APPROVED_FOR_LISTING|REJECTED)$")
+
+
 @app.post("/api/public/problem-submissions")
 def submit_customer_problem(payload: PublicProblemSubmissionIn, request: Request):
     """Accept a product-problem suggestion without exposing private business records."""
@@ -259,6 +281,64 @@ def queue_customer_problem_research(submission_id: int, payload: CustomerResearc
             "source_submission_id": submission_id,
             "contact_data_shared": False,
             "research_limit": "No live web search or external contact is performed by this task."}
+
+
+@app.post("/api/products/drafts",
+          dependencies=[Depends(require_federation_admin)])
+def create_product_draft(payload: ProductDraftIn):
+    guard_mutation()
+    data = payload.model_dump()
+    source_id = data["source_submission_id"]
+    if source_id:
+        source = customer_feedback.get(source_id)
+        if not source or source["status"] not in {"ROADMAP", "REVIEWED"}:
+            raise HTTPException(409, "source customer problem must be reviewed first")
+    try:
+        result = product_pipeline.create(data)
+        store.log("federation_admin", "product_draft_created", str(result["id"]))
+        return result
+    except ProductPipelineError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.get("/api/products/drafts",
+         dependencies=[Depends(require_federation_admin)])
+def list_product_drafts(status: str = "ALL", limit: int = 100):
+    try:
+        return {"items": product_pipeline.list(status, limit)}
+    except ProductPipelineError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.post("/api/products/drafts/{product_id}/validation",
+          dependencies=[Depends(require_federation_admin)])
+def record_product_validation(product_id: int, payload: ProductValidationIn):
+    guard_mutation()
+    try:
+        result = product_pipeline.record_validation(
+            product_id, payload.checks, payload.evidence_summary)
+        store.log("federation_admin", "product_validation_recorded", str(product_id))
+        return result
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ProductPipelineError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.post("/api/products/drafts/{product_id}/decision",
+          dependencies=[Depends(require_federation_admin)])
+def decide_product_draft(product_id: int, payload: ProductDecisionIn):
+    guard_mutation()
+    try:
+        result = product_pipeline.decide(product_id, payload.decision)
+        store.log("federation_admin", "product_owner_decision",
+                  str(product_id) + ":" + payload.decision)
+        return {"product": result, "published": False,
+                "note": "Approval only prepares a listing. It does not publish to Gumroad."}
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ProductPipelineError as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 @app.get("/health")
