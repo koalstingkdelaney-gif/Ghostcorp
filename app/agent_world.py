@@ -249,18 +249,19 @@ class AgentWorld:
                 raise LookupError("agent has no world identity")
             now = _utc()
             encoded = json.dumps(config, separators=(",", ":"), ensure_ascii=False)
+            scoped_event_key = machine_id + ":" + event_key
             try:
                 cur = self.conn.execute(
                     """INSERT INTO world_adaptations
                        (event_key,machine_id,division_slug,zone,change_type,title,summary,config,created_at)
                        VALUES(?,?,?,?,?,?,?,?,?)""",
-                    (event_key,machine_id,agent["division_slug"],agent["zone"],
+                    (scoped_event_key,machine_id,agent["division_slug"],agent["zone"],
                      change_type,title.strip(),summary.strip(),encoded,now)
                 )
             except sqlite3.IntegrityError:
                 row = self.conn.execute(
-                    "SELECT id,zone,change_type,title,created_at FROM world_adaptations WHERE event_key=?",
-                    (event_key,)
+                    "SELECT id,zone,change_type,title,created_at FROM world_adaptations WHERE event_key=? AND machine_id=?",
+                    (scoped_event_key,machine_id)
                 ).fetchone()
                 return {"outcome":"duplicate","adaptation":dict(row)}
             self.conn.execute(
