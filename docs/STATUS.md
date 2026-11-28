@@ -246,8 +246,11 @@ freshly rerun or independently reverified in this update.
   credentials return HTTP 403. Public health, package catalogue and sanitized
   public build journal remain public.
 - Added `tests/test_owner_api_auth.py` for locked, rejected and authorized
-  access paths. Tests have **not yet been executed**; await CI before claiming
-  this change is verified.
+  access paths, and updated the existing API smoke test to use the owner gate.
+- GitHub Actions run `46096281167` on code commit
+  `bc8df36f466ed55e1f05aa24fbe551234d0e83f2` passed:
+  **113 passed, 1 warning**. The warning is the Starlette/httpx TestClient
+  deprecation notice; no test failures remain on that commit.
 - This is an API admin gate, not the finished owner email sign-in or browser
   session bridge. A backend deployment must configure the secret privately
   before private admin routes can be used.
