@@ -353,7 +353,7 @@ freshly rerun or independently reverified in this update.
 - Added `scripts/run_worker_loop.py` with bounded task count/runtime, HTTPS enforcement for remote API origins, bounded idle polling, exponential error backoff, graceful SIGTERM/SIGINT handling, and metadata-only logs.
 - Added `tests/test_worker_loop.py` for safe limits and API origin validation.
 - Documented host setup in `docs/LOCAL-MODEL-GATEWAY.md`. The worker still requires a real backend, provisioned machine token, local Ollama service/model, and a supervisor. No worker is running or deployed.
-- GitHub Actions test runs 46177762458 and 46177770963 were observed in progress after these commits; final outcomes must be checked before reporting the new tests as passing.
+- GitHub Actions run 46177770963 completed successfully on commit `9ea4473132001689eedab88339f67fb5cb875a99`: **158 passed, 1 warning**; the backend Docker image built and the container smoke test passed with a writable `/data` mount. Run 46177762458 also completed successfully on the preceding worker-runner commit. These are CI container checks, not a production deployment.
 
 ### Hosting discovery and hard blockers
 - Inspected the connected Render workspace. It contains several free services, but none is connected to the existing `koalstingkdelaney-gif/Ghostcorp` repository; the listed services belong to unrelated repositories.
