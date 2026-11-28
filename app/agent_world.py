@@ -257,12 +257,12 @@ class AgentWorld:
                 raise ValueError("labels must be at most eight short strings")
         with self._lock:
             agent = self.conn.execute(
-                "SELECT division_slug,zone FROM world_agents WHERE machine_id=?",
+                "SELECT division_slug,zone,role FROM world_agents WHERE machine_id=?",
                 (machine_id,)
             ).fetchone()
             if not agent:
                 raise LookupError("agent has no world identity")
-            if agent["zone"] not in self.zones_for_division(agent["division_slug"], self.conn.execute(\n                "SELECT role FROM world_agents WHERE machine_id=?", (machine_id,)\n            ).fetchone()["role"]):
+            if agent["zone"] not in self.zones_for_division(agent["division_slug"], agent["role"]):
                 raise ValueError("agent cannot adapt a zone outside its division workspace")
             now = _utc()
             encoded = json.dumps(config, separators=(",", ":"), ensure_ascii=False)
