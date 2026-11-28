@@ -90,6 +90,21 @@ class AgentWorld:
         );
         CREATE INDEX IF NOT EXISTS idx_world_events_created
           ON world_events(created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS world_adaptations (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          event_key TEXT NOT NULL UNIQUE,
+          machine_id TEXT NOT NULL,
+          division_slug TEXT NOT NULL,
+          zone TEXT NOT NULL,
+          change_type TEXT NOT NULL,
+          title TEXT NOT NULL,
+          summary TEXT NOT NULL,
+          config TEXT NOT NULL DEFAULT '{}',
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_world_adaptations_zone
+          ON world_adaptations(zone,id DESC);
         """)
         self.conn.commit()
 
@@ -186,6 +201,96 @@ class AgentWorld:
             return {"mode": "WORLD_SIMULATION_WITH_AUTHENTICATED_PRESENCE",
                     "world_policy": {"primary_goal": "maximize lawful net value for GhostCorp", "default_paid_spend_usd": 0, "agent_work_environment": "private GhostCorp sandbox", "external_actions": "controlled gateways only", "owner_override": True},
                     "world_time_utc": _utc(), "counts": counts, "agents": agents}
+
+
+    def record_learning(self, machine_id, event_key, change_type, title, summary, config=None):
+        """Persist a bounded, declarative world adaptation in the agent's current zone."""
+        import json
+        allowed_types = {"knowledge-cluster", "workspace-layout", "ambient-state",
+                         "workstation-upgrade", "display-panel"}
+        if change_type not in allowed_types:
+            raise ValueError("unsupported world change type")
+        if not isinstance(event_key, str) or not 3 <= len(event_key) <= 120:
+            raise ValueError("invalid event key")
+        if not isinstance(title, str) or not 1 <= len(title.strip()) <= 80:
+            raise ValueError("title must be 1-80 characters")
+        if not isinstance(summary, str) or not 1 <= len(summary.strip()) <= 500:
+            raise ValueError("summary must be 1-500 characters")
+        config = {} if config is None else config
+        if not isinstance(config, dict) or len(json.dumps(config).encode("utf-8")) > 2048:
+            raise ValueError("world change config must be a small JSON object")
+        allowed_config = {"accent", "intensity", "scale", "position", "labels", "density"}
+        if set(config) - allowed_config:
+            raise ValueError("world change config contains unsupported properties")
+        if "accent" in config and (not isinstance(config["accent"], str) or
+                                    len(config["accent"]) > 24 or
+                                    not __import__("re").fullmatch(r"#[0-9a-fA-F]{6}", config["accent"])):
+            raise ValueError("accent must be a six-digit hex color")
+        for key, low, high in (("intensity", 0.0, 1.0), ("scale", 0.5, 2.0), ("density", 0.1, 2.0)):
+            if key in config and (not isinstance(config[key], (int, float)) or
+                                  isinstance(config[key], bool) or not low <= config[key] <= high):
+                raise ValueError(f"{key} is outside its allowed range")
+        if "position" in config:
+            pos = config["position"]
+            if (not isinstance(pos, list) or len(pos) != 3 or
+                any(not isinstance(v, (int, float)) or isinstance(v, bool) or abs(v) > 20 for v in pos)):
+                raise ValueError("position must be three bounded numeric coordinates")
+        if "labels" in config:
+            labels = config["labels"]
+            if (not isinstance(labels, list) or len(labels) > 8 or
+                any(not isinstance(v, str) or len(v) > 32 for v in labels)):
+                raise ValueError("labels must be at most eight short strings")
+        with self._lock:
+            agent = self.conn.execute(
+                "SELECT division_slug,zone FROM world_agents WHERE machine_id=?",
+                (machine_id,)
+            ).fetchone()
+            if not agent:
+                raise LookupError("agent has no world identity")
+            now = _utc()
+            encoded = json.dumps(config, separators=(",", ":"), ensure_ascii=False)
+            try:
+                cur = self.conn.execute(
+                    """INSERT INTO world_adaptations
+                       (event_key,machine_id,division_slug,zone,change_type,title,summary,config,created_at)
+                       VALUES(?,?,?,?,?,?,?,?,?)""",
+                    (event_key,machine_id,agent["division_slug"],agent["zone"],
+                     change_type,title.strip(),summary.strip(),encoded,now)
+                )
+            except sqlite3.IntegrityError:
+                row = self.conn.execute(
+                    "SELECT id,zone,change_type,title,created_at FROM world_adaptations WHERE event_key=?",
+                    (event_key,)
+                ).fetchone()
+                return {"outcome":"duplicate","adaptation":dict(row)}
+            self.conn.execute(
+                """INSERT INTO world_events(machine_id,event_type,summary,zone,created_at)
+                   VALUES(?,?,?,?,?)""",
+                (machine_id,"world_adaptation",title.strip()+": "+summary.strip()[:300],
+                 agent["zone"],now)
+            )
+            self.conn.commit()
+            return {"outcome":"created","adaptation":{
+                "id":cur.lastrowid,"machine_id":machine_id,"division":agent["division_slug"],
+                "zone":agent["zone"],"change_type":change_type,"title":title.strip(),
+                "summary":summary.strip(),"config":config,"created_at":now}}
+
+    def adaptations(self, limit=200, zone=""):
+        import json
+        limit = max(1, min(int(limit), 500))
+        with self._lock:
+            if zone:
+                rows = self.conn.execute(
+                    """SELECT id,machine_id,division_slug,zone,change_type,title,summary,config,created_at
+                       FROM world_adaptations WHERE zone=? ORDER BY id DESC LIMIT ?""",
+                    (zone,limit)
+                ).fetchall()
+            else:
+                rows = self.conn.execute(
+                    """SELECT id,machine_id,division_slug,zone,change_type,title,summary,config,created_at
+                       FROM world_adaptations ORDER BY id DESC LIMIT ?""",(limit,)
+                ).fetchall()
+            return [{**dict(row),"config":json.loads(row["config"])} for row in rows]
 
     def recent_events(self, limit=50):
         limit = max(1, min(int(limit), 200))
