@@ -330,3 +330,33 @@ freshly rerun or independently reverified in this update.
   described in `docs/DEPLOYMENT-AND-INTEGRATION.md`.
 - Paid spend remains $0 by default. Do not deploy to ephemeral storage or
   enable paid hosting without explicit owner approval.
+
+
+## Backend, proxy, and worker integration increment (2026-11-28)
+
+### VR-to-backend contract repair
+- The website VR bridge previously requested non-existent `/api/vr/*` paths and expected a snapshot schema that did not match the FastAPI backend.
+- Updated the bridge in the existing `ghostcorpnet-site` repository to check `/auth/status`, then `/auth/me`, then fetch `/api/world/snapshot` only for an authenticated owner session.
+- The bridge validates the `agents` array and `counts` object, clears private snapshot UI state on an unauthenticated session, avoids localStorage/private snapshot caching, and displays a distinct state when OAuth is not configured.
+- Updated VR smoke checks for the actual API contract and the private-cache guard. GitHub Pages deployment run 46177046670 and VR smoke run 46177047638 completed successfully on site commit `b142f3cd144a02688e0e1c56308977bfaebed412`. Run 46177041203 also passed on the preceding commit.
+- These are source/CI checks; no actual Quest headset session or live same-origin backend route has been verified.
+
+### Durable Jarvis handoff
+- Added `docs/JARVIS-MASTER-HANDOFF.md` as a persistent mission, architecture, owner-constraint, security, product, revenue, investor-readiness, and continuity directive.
+
+### Same-origin API proxy
+- Added `infra/cloudflare/ghostcorp-api-proxy.js` and `docs/CLOUDFLARE-API-PROXY.md`.
+- The Worker forwards only `/auth/*`, `/api/*`, `/webhooks/*`, `/health`, and `/ready`; static Pages paths remain untouched. It requires an HTTPS `BACKEND_ORIGIN`, preserves same-origin cookies, adds no permissive CORS policy, and marks responses no-store.
+- The Worker source is committed but not deployed. The Cloudflare zone, Worker binding, backend origin, route patterns, DNS, and TLS behavior have not been verified.
+
+### Bounded queue worker runner
+- Added `scripts/run_worker_loop.py` with bounded task count/runtime, HTTPS enforcement for remote API origins, bounded idle polling, exponential error backoff, graceful SIGTERM/SIGINT handling, and metadata-only logs.
+- Added `tests/test_worker_loop.py` for safe limits and API origin validation.
+- Documented host setup in `docs/LOCAL-MODEL-GATEWAY.md`. The worker still requires a real backend, provisioned machine token, local Ollama service/model, and a supervisor. No worker is running or deployed.
+- GitHub Actions test runs 46177762458 and 46177770963 were observed in progress after these commits; final outcomes must be checked before reporting the new tests as passing.
+
+### Hosting discovery and hard blockers
+- Inspected the connected Render workspace. It contains several free services, but none is connected to the existing `koalstingkdelaney-gif/Ghostcorp` repository; the listed services belong to unrelated repositories.
+- No Render service was created or repurposed. The current free-service options do not establish the durable writable `/data` volume required for this SQLite application. Do not deploy to ephemeral storage and risk loss of owner sessions, approvals, queue state, customer submissions, and audit records.
+- The connected Supabase account has an organization but no existing project. No database project was created. Creating a new project requires the owner to select/confirm the organization and the backend would still need a durable host plus a reviewed database migration; the current backend uses SQLite.
+- Backend hosting, durable storage, Cloudflare deployment, OAuth secrets, live owner login, Quest hardware testing, and active model compute remain external prerequisites. Paid spend remains $0.
